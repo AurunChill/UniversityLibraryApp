@@ -1,0 +1,66 @@
+# ─── Visual Studio / MSBuild artifacts ──────────────────────────────────────
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.VC.db
+*.VC.VC.opendb
+ipch/
+
+# ─── Build output ───────────────────────────────────────────────────────────
+bin/
+obj/
+[Bb]uild/
+[Ll]og/
+*.tlog
+*.log
+
+# ─── NuGet / tooling caches ─────────────────────────────────────────────────
+packages/
+.nuget/
+*.nupkg
+*.snupkg
+# dotnet workload packs
+.dotnet/
+
+# ─── Test / coverage ────────────────────────────────────────────────────────
+TestResults/
+*.trx
+coverage/
+*.coverage
+*.coverlet.json
+
+# ─── Rider / ReSharper / VS Code settings ───────────────────────────────────
+.idea/
+*.DotSettings.user
+*.ReSharper
+.vscode/*          # оставьте settings.json, если нужно → снимите звёздочку
+
+# ─── Runtime data ───────────────────────────────────────────────────────────
+# Файлы SQLite, создаваемые в папке App_Data, не коммитим.
+App_Data/**/*.db
+App_Data/**/*.sqlite*
+App_Data/**/*.bak
+# Оставляем сам каталог, добавьте туда пустой `.gitkeep`, если нужен.
+
+# ─── Logs, dumps, misc ──────────────────────────────────────────────────────
+*.dump
+*.tmp
+*.temp
+*.cache
+
+# ─── Secret / local config ──────────────────────────────────────────────────
+appsettings.*.json       # если храните секреты локально
+secrets.json
+*.pfx
+*.key
+
+# ─── Generated code ─────────────────────────────────────────────────────────
+Generated\ Files/
+*.g.cs
+*.designer.cs           # WinForms-генераторы, если НЕ хотите отслеживать — обычно оставляют
+
+# ─── User-specific Syncfusion / DevExpress settings (если появятся) ─────────
+SyncfusionLicense.txt
+DevExpressLicense.xml
