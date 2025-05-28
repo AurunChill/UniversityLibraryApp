@@ -9,6 +9,7 @@ namespace LibraryApp.Data
         public static void EnsureCreated(string dbName = "library.db")
         {
             string DbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "AppData", dbName);
+            Console.WriteLine(DbPath);
             Directory.CreateDirectory(Path.GetDirectoryName(DbPath)!);
 
             var connectionString = $"Data Source={DbPath};Cache=Shared";

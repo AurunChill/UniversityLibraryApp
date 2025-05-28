@@ -1,30 +1,31 @@
-using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 
 namespace LibraryApp.Data.Models;
 
 [Index(nameof(ReaderTicketId), nameof(BookId), IsUnique = true)]
+[Table("Debtor")]
 public class Debtor
 {
-    [Key] public long DebtorId { get; set; }
-
-    [Required] public long ReaderTicketId { get; set; }
-    [Required] public long BookId { get; set; }
-
-    [Required] public DateOnly GetDate { get; set; }
+    [Key, Column("debtor_id")]
+    public long DebtorId { get; set; }
+    [Column("reader_ticket_id")]
+    public long ReaderTicketId { get; set; }
+    [Column("book_id")]
+    public long BookId { get; set; }
+    [Column("get_date")]
+    public DateOnly GetDate { get; set; }
+    [Column("return_date")]
     public DateOnly? ReturnDate { get; set; }
-
-    [Required] public DebtorStatus Status { get; set; } = DebtorStatus.В_Срок;
-
-    [Required] public DateOnly DebtDate { get; set; }
-
-    [Range(0, int.MaxValue)]
+    [Column("status")]
+    public DebtorStatus Status { get; set; }
+    [Column("debt_date")]
+    public DateOnly DebtDate { get; set; }
+    [Column("days_until_debt")]
     public int DaysUntilDebt { get; set; }
-
-    [DefaultValue(0.0), Range(0, double.MaxValue)]
+    [Column("late_penalty")]
     public double LatePenalty { get; set; }
-
-    public ReaderTicket? ReaderTicket { get; set; }
     public Book? Book { get; set; }
+    public ReaderTicket? ReaderTicket { get; set; }
 }
