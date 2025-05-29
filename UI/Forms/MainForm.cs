@@ -1,19 +1,16 @@
 using System.Drawing.Drawing2D;
 using LibraryApp.Data.Models;
-using LibraryApp.Services.Interfaces;
 
 namespace LibraryApp.UI.Forms;
 
 public sealed class MainForm : Form
 {
-    private readonly IBookService _books;
     private readonly Rectangle _screenBounds;
     private FlowLayoutPanel? _cardPanel;
     private Label? _countLabel;
 
-    public MainForm(IBookService bookService)
+    public MainForm()
     {
-        _books = bookService;
         _screenBounds = Screen.PrimaryScreen!.Bounds;
         BuildUI();
     }
@@ -110,7 +107,13 @@ public sealed class MainForm : Form
                 ForeColor = isSelected ? accent : Color.Gainsboro,
                 Cursor = Cursors.Hand
             };
-            l.Click += (_, __) => MessageBox.Show($"Переход на «{navPage}» (заглушка)");
+            l.Click += (_, __) => { 
+                if (navPage == "Поставки") {
+                    new SuppliesPage().ShowDialog(this);
+                } else {
+                    MessageBox.Show($"Переход на «{navPage}» (заглушка)");
+                }
+            };
             tabs.Controls.Add(l);
         }
 
@@ -150,8 +153,8 @@ public sealed class MainForm : Form
         _cardPanel.Controls.Clear();
 
         var books = string.IsNullOrWhiteSpace(query)
-                   ? await _books.GetAllAsync(null, 0)
-                   : await _books.FullTextAsync(query);
+                   ? await Books.GetAllAsync(null, 0)
+                   : await Books.FullTextAsync(query);
 
         foreach (var book in books) {
             var card = GetCard(book: book);
@@ -184,7 +187,8 @@ public sealed class MainForm : Form
             Width = 260,
             SizeMode = PictureBoxSizeMode.AutoSize,
             BackColor = Color.FromArgb(40, 40, 46),
-            Image = File.Exists(imgPath) ? Image.FromFile(imgPath) : null
+            Image = File.Exists(imgPath) ? Image.FromFile(imgPath) : null,
+            Tag = book
         };
         Round(pic, 12, topOnly: true);
 
@@ -213,8 +217,21 @@ public sealed class MainForm : Form
             }
         );
 
+        card.Click += CardClick;
+        pic.Click  += CardClick;
+        text.Click += CardClick;
+        foreach (Control lbl in text.Controls)
+            lbl.Click += CardClick;   // чтобы клик по подписи тоже открывал детали
+
+
         card.Controls.AddRange([text, pic]);
         return card;
+    }
+
+    private void CardClick(object? s, EventArgs e) {
+        if (s is Control c && c.Tag is Book b)
+            using (var f = new BookDetailForm(b))
+                f.ShowDialog(this);
     }
 
     private static void Round(Control c, int r, bool topOnly = false)
