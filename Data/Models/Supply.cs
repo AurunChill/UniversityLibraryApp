@@ -71,8 +71,12 @@ public static class Supplies
 
         db.Supplies.Add(s);
 
-        book.Amount += s.Amount;           // приход → +, списание/долг → -
-        if (book.Amount < 0) book.Amount = 0;
+        if (s.OperationType == OperationType.Приход.Text()) {
+            book.Amount += s.Amount;
+        } else {
+            book.Amount -= s.Amount;
+            if (book.Amount < 0) book.Amount = 0;
+        }
 
         await db.SaveChangesAsync();
         return s;

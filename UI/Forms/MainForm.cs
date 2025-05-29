@@ -8,6 +8,7 @@ public sealed class MainForm : Form
     private readonly Rectangle _screenBounds;
     private FlowLayoutPanel? _cardPanel;
     private Label? _countLabel;
+    private TextBox? _search;
 
     public MainForm()
     {
@@ -24,14 +25,14 @@ public sealed class MainForm : Form
 
         var navigation = GetNavigationRow();
         var mainLabel = GetMainLabel(marginTopStart: navigation.Top + navigation.Height);
-        var search = GetSearchBox(marginTopStart: mainLabel.Height + mainLabel.Top);
-        _countLabel = GetCountLabel(marginTopStart: search.Top + search.Height);
-        _cardPanel = GetCardPanel(margintopStart: _countLabel.Top + _countLabel.Height);
+        _search = GetSearchBox(marginTopStart: mainLabel.Height + mainLabel.Top);
+        var statusLabel = GetStatusPanel(marginTopStart: _search.Top + _search.Height);
+        _cardPanel = GetCardPanel(margintopStart: statusLabel.Top + statusLabel.Height);
 
         Controls.Add(navigation);
         Controls.Add(mainLabel);
-        Controls.Add(search);
-        Controls.Add(_countLabel);
+        Controls.Add(_search);
+        Controls.Add(statusLabel);
         Controls.Add(_cardPanel);
         ActiveControl = mainLabel;
 
@@ -49,8 +50,8 @@ public sealed class MainForm : Form
             AutoSize = false,
             Multiline = false,
             BorderStyle = BorderStyle.None,
-            BackColor   = Color.FromArgb(55, 55, 60),
-            ForeColor   = Color.White,
+            BackColor = Color.FromArgb(55, 55, 60),
+            ForeColor = Color.White,
             MaxLength = 75,
             PlaceholderText = "  Поиск...",
             Font = new Font("Segoe UI", 14, FontStyle.Regular)
@@ -59,7 +60,8 @@ public sealed class MainForm : Form
 
         searchBox.KeyDown += async (sender, e) =>
         {
-            if (e.KeyCode == Keys.Enter) {
+            if (e.KeyCode == Keys.Enter)
+            {
                 await GetCards(query: searchBox.Text);
             }
         };
@@ -93,7 +95,7 @@ public sealed class MainForm : Form
             FlowDirection = FlowDirection.LeftToRight,
             BackColor = Color.Transparent
         };
-        Color accent = Color.FromArgb(98, 0, 238);  
+        Color accent = Color.FromArgb(98, 0, 238);
         string[] navPages = ["Главная", "Поставки", "Должники", "Читательские билеты"];
         foreach (string navPage in navPages)
         {
@@ -107,11 +109,12 @@ public sealed class MainForm : Form
                 ForeColor = isSelected ? accent : Color.Gainsboro,
                 Cursor = Cursors.Hand
             };
-            l.Click += (_, __) => { 
-                if (navPage == "Поставки") {
-                    new SuppliesPage().ShowDialog(this);
-                } else {
-                    MessageBox.Show($"Переход на «{navPage}» (заглушка)");
+            l.Click += (_, __) =>
+            {
+                switch (navPage) {
+                    case "Поставки": using(var f=new SuppliesPage()) f.ShowDialog(this); break;
+                    case "Должники": using(var f=new DebtorsPage()) f.ShowDialog(this); break;
+                    case "Читательские билеты": using(var f=new ReaderTicketsPage()) f.ShowDialog(this); break;
                 }
             };
             tabs.Controls.Add(l);
@@ -120,25 +123,51 @@ public sealed class MainForm : Form
         return tabs;
     }
 
-    private Label GetCountLabel(int marginTopStart = 0) {
-        var countLabel = new Label {
-            Top = marginTopStart + 8,
-            Left = 12,
-            AutoSize = true,
-            Font = new Font("Segoe UI", 9, FontStyle.Regular),
-            ForeColor = Color.Gainsboro,
-            Text = string.Empty
+    private Panel GetStatusPanel(int marginTopStart = 0)
+    {
+        var panel = new Panel
+        {
+            Top = marginTopStart,
+            Left = 0,
+            Width = _screenBounds.Width,
+            Height = 24,
+            BackColor = Color.Transparent
         };
 
-        return countLabel;
+        _countLabel = new Label
+        {
+            AutoSize = true,
+            Left = 12,
+            Top = 4,
+            ForeColor = Color.Gainsboro,
+            Font = new Font("Segoe UI", 9)
+        };
+
+        var refresh = new LinkLabel
+        {
+            Text = "Обновить список",
+            AutoSize = true,
+            Font = new Font("Segoe UI", 9, FontStyle.Underline),
+            LinkColor = Color.Gainsboro,
+            ActiveLinkColor = Color.White
+        };
+        refresh.Left = panel.Width - refresh.PreferredWidth - 20;
+        refresh.Top = 4;
+        refresh.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+        refresh.Click += async (_, __) => await GetCards(query: _search!.Text);
+
+        panel.Controls.AddRange([_countLabel, refresh]);
+        return panel;
     }
 
-    private FlowLayoutPanel GetCardPanel(int margintopStart = 0) {
-        var cards = new FlowLayoutPanel {
+    private FlowLayoutPanel GetCardPanel(int margintopStart = 0)
+    {
+        var cards = new FlowLayoutPanel
+        {
             Top = margintopStart + 18,
             Left = 75,
             Width = _screenBounds.Width,
-            Height = _screenBounds.Height - (margintopStart + 18),
+            Height = _screenBounds.Height - (margintopStart + 150),
             AutoScroll = true,
             WrapContents = true,
             FlowDirection = FlowDirection.LeftToRight,
@@ -148,7 +177,8 @@ public sealed class MainForm : Form
         return cards;
     }
 
-    private async Task GetCards(string? query = null) {
+    private async Task GetCards(string? query = null)
+    {
         _cardPanel!.SuspendLayout();
         _cardPanel.Controls.Clear();
 
@@ -156,7 +186,8 @@ public sealed class MainForm : Form
                    ? await Books.GetAllAsync(null, 0)
                    : await Books.FullTextAsync(query);
 
-        foreach (var book in books) {
+        foreach (var book in books)
+        {
             var card = GetCard(book: book);
             _cardPanel.Controls.Add(card);
         }
@@ -166,12 +197,13 @@ public sealed class MainForm : Form
         _cardPanel.ResumeLayout();
     }
 
-    private Panel GetCard(Book book) {
+    private Panel GetCard(Book book)
+    {
         var card = new Panel
         {
             Size = new Size(260, 420),
             Margin = new Padding(15),
-            BackColor= Color.FromArgb(40, 40, 46), 
+            BackColor = Color.FromArgb(40, 40, 46),
             Cursor = Cursors.Hand,
             Tag = book
         };
@@ -181,7 +213,8 @@ public sealed class MainForm : Form
             AppDomain.CurrentDomain.BaseDirectory, "AppData", "Media", "Covers", book.CoverUrl
         );
 
-        var pic = new PictureBox {
+        var pic = new PictureBox
+        {
             Dock = DockStyle.Top,
             Height = 320,
             Width = 260,
@@ -195,30 +228,44 @@ public sealed class MainForm : Form
         string title = book.Title.Length > 25 ? book.Title[..22] + "..." : book.Title;
         string author = book.Author.Length > 25 ? book.Author[..22] + "..." : book.Author;
 
-        var text = new Panel { 
-            Dock = DockStyle.Fill, Padding = new Padding(10, 8, 6, 0) 
+        var text = new Panel
+        {
+            Dock = DockStyle.Fill,
+            Padding = new Padding(10, 8, 6, 0)
         };
         text.Controls.Add(
-            new Label { 
-                Text = book.PublishYear.ToString(), Dock = DockStyle.Top, Height = 18, 
-                Font = new Font("Segoe UI", 9), ForeColor = Color.Silver 
+            new Label
+            {
+                Text = book.PublishYear.ToString(),
+                Dock = DockStyle.Top,
+                Height = 18,
+                Font = new Font("Segoe UI", 9),
+                ForeColor = Color.Silver
             }
         );
         text.Controls.Add(
-            new Label { 
-                Text = author, Dock = DockStyle.Top, Height = 22, 
-                Font = new Font("Segoe UI", 10), ForeColor = Color.Gainsboro
+            new Label
+            {
+                Text = author,
+                Dock = DockStyle.Top,
+                Height = 22,
+                Font = new Font("Segoe UI", 10),
+                ForeColor = Color.Gainsboro
             }
         );
         text.Controls.Add(
-            new Label { 
-                Text = title, Dock = DockStyle.Top, Height = 32, 
-                Font = new Font("Segoe UI", 13, FontStyle.Bold), ForeColor = Color.White
+            new Label
+            {
+                Text = title,
+                Dock = DockStyle.Top,
+                Height = 32,
+                Font = new Font("Segoe UI", 13, FontStyle.Bold),
+                ForeColor = Color.White
             }
         );
 
         card.Click += CardClick;
-        pic.Click  += CardClick;
+        pic.Click += CardClick;
         text.Click += CardClick;
         foreach (Control lbl in text.Controls)
             lbl.Click += CardClick;   // чтобы клик по подписи тоже открывал детали
@@ -228,7 +275,8 @@ public sealed class MainForm : Form
         return card;
     }
 
-    private void CardClick(object? s, EventArgs e) {
+    private void CardClick(object? s, EventArgs e)
+    {
         if (s is Control c && c.Tag is Book b)
             using (var f = new BookDetailForm(b))
                 f.ShowDialog(this);

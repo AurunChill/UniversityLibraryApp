@@ -56,6 +56,7 @@ public class Book
 public static class Books
 {
     public static IDbContextFactory<LibraryContext> Factory { get; set; } = null!;
+    public static void Init(IDbContextFactory<LibraryContext> f) => Factory = f;
 
     public static async Task<IReadOnlyList<Book>> GetAllAsync(int? limit = null, int offset = 0)
     {
@@ -68,15 +69,21 @@ public static class Books
 
     public static async Task<IReadOnlyList<Book>> FullTextAsync(string q)
     {
-        if (string.IsNullOrWhiteSpace(q)) return await GetAllAsync(null, 0);
-        q = $"%{q}%";
+        if (string.IsNullOrWhiteSpace(q))
+            return await GetAllAsync(null, 0);
+
+        q = q.Trim();
 
         await using var db = await Factory.CreateDbContextAsync();
-        return await db.Books.AsNoTracking()
-                  .Where(b => EF.Functions.Like(b.Title, q) ||
-                              EF.Functions.Like(b.Description!, q) ||
-                              EF.Functions.Like(b.Author, q))
-                  .ToListAsync();
+
+        var list = await db.Books.AsNoTracking().ToListAsync();
+
+        return list.Where(b =>
+                b.Title.Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                (!string.IsNullOrEmpty(b.Description) &&
+                b.Description.Contains(q, StringComparison.OrdinalIgnoreCase)) ||
+                b.Author.Contains(q, StringComparison.OrdinalIgnoreCase))
+            .ToList();
     }
 
     public static async Task<Book> AddAsync(Book b)

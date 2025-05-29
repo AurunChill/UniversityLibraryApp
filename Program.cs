@@ -36,8 +36,11 @@ internal static class Program
         using IHost host = CreateHost(args);
 
         // даём Books доступ к той же фабрике, что зарегистрирована в DI
-        Books.Factory = host.Services.GetRequiredService<IDbContextFactory<LibraryContext>>();
-        Supplies.Factory = Books.Factory;
+        var factory = host.Services.GetRequiredService<IDbContextFactory<LibraryContext>>();
+        Books.Init(factory);
+        Supplies.Factory  = factory;
+        ReaderTickets.Init(factory);
+        Debtors.Init(factory);
 
         DatabaseInitializer.EnsureCreated(
             args.Length > 0 && args[0] == "--test" ? "library_test.db" : "library.db");

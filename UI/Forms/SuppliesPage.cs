@@ -151,15 +151,15 @@ internal sealed class SupplyAddDialog : Form
     private readonly TextBox _tTitle = new();
     private readonly TextBox _tAuthor = new();
     private readonly TextBox _tIsbn = new();
-    private readonly NumericUpDown _tYear = new() { Minimum = 0, Maximum = 3000, Value = (uint)DateTime.Now.Year };
-    private readonly NumericUpDown _tPages = new() { Minimum = 0, Maximum = 10000 };
+    private readonly NumericUpDown _tYear = new() { Minimum = 0, Maximum = (uint)DateTime.Now.Year , Value = (uint)DateTime.Now.Year };
+    private readonly NumericUpDown _tPages = new() { Minimum = 1, Maximum = 10000 };
     private readonly TextBox _tGenre = new() { Text = "Не указано" };
     private readonly TextBox _tPublisher = new() { Text = "Не указано" };
     private readonly TextBox _tLanguage = new() { Text = "ru" };
     private readonly TextBox _tLocation = new() { Text = "Основной зал" };
     private readonly TextBox _tDescription = new() { Multiline = true, Height = 60, ScrollBars = ScrollBars.Vertical };
     private readonly TextBox _tCoverPath = new() { ReadOnly = true, BackColor = SystemColors.Window };
-    private readonly Button _btnBrowse = new() { Text = "Файл…" , Height = 30};
+    private readonly Button _btnBrowse = new() { Text = "Файл…", Height = 30 };
 
     private Book? _selectedBook;
 
@@ -306,7 +306,7 @@ internal sealed class SupplyAddDialog : Form
         if (string.IsNullOrWhiteSpace(_tTitle.Text) ||
             string.IsNullOrWhiteSpace(_tAuthor.Text) ||
             string.IsNullOrWhiteSpace(_tIsbn.Text) ||
-            string.IsNullOrWhiteSpace(_tLanguage.Text)|| 
+            string.IsNullOrWhiteSpace(_tLanguage.Text) ||
             string.IsNullOrWhiteSpace(_tPublisher.Text) ||
             string.IsNullOrWhiteSpace(_tGenre.Text) ||
             string.IsNullOrWhiteSpace(_tLocation.Text) ||
