@@ -8,14 +8,15 @@ public sealed class SuppliesPage : Form
 {
     private readonly BindingSource _bs = new();
     private DataGridView _grid = null!;
+    private string _sortColumn = nameof(Supply.SupplyId);
+    private SortOrder _sortOrder = SortOrder.Ascending;
 
     public SuppliesPage()
     {
         BuildUI();
     }
 
-    /* ───────── UI ───────── */
-   private TextBox _txtSearchSupplies = null!;
+    private TextBox _txtSearchSupplies = null!;
 
     private void BuildUI()
     {
@@ -42,7 +43,7 @@ public sealed class SuppliesPage : Form
         {
             PlaceholderText = "  Поиск по книге или типу операции…",
             Left = 20,
-            Top = header.Bottom + 15,
+            Top = header.Bottom + 35,
             Width = ClientSize.Width - 40,  // можно подогнать
             Height = 30
         };
@@ -50,11 +51,20 @@ public sealed class SuppliesPage : Form
         _txtSearchSupplies.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
         _txtSearchSupplies.TextChanged += async (_, __) => await RefreshGrid();
 
+        var clickToSortLabel = new Label
+        {
+            Text = "Нажмите на заголовок колонки для сортировки",
+            Left = 20,
+            Top = _txtSearchSupplies.Bottom + 10,
+            AutoSize = true
+        };
+        Controls.Add(clickToSortLabel);
+
         // ── Сам грид ──
         _grid = new DataGridView
         {
             Left = 20,
-            Top = _txtSearchSupplies.Bottom + 10,
+            Top = clickToSortLabel.Bottom + 10,
             Width = ClientSize.Width - 40,
             Height = ClientSize.Height - header.Bottom - 200,
             Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
@@ -65,6 +75,7 @@ public sealed class SuppliesPage : Form
             ReadOnly = true,
             DataSource = _bs
         };
+        _grid.ColumnHeaderMouseClick += Grid_ColumnHeaderMouseClick!;
 
         var darkCell = new DataGridViewCellStyle
         {
@@ -86,7 +97,7 @@ public sealed class SuppliesPage : Form
             BackColor = Color.FromArgb(40, 40, 46)
         };
 
-        _grid.BorderStyle = BorderStyle.None;                   
+        _grid.BorderStyle = BorderStyle.None;
         _grid.CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal;
 
         var btnAdd = MakeButton("Добавить", _grid.Left, _grid.Bottom + 15,
@@ -98,6 +109,25 @@ public sealed class SuppliesPage : Form
 
         Shown += async (_, __) => await RefreshGrid();
     }
+
+    private async void Grid_ColumnHeaderMouseClick(object sender, DataGridViewCellMouseEventArgs e)
+    {
+        var column = _grid.Columns[e.ColumnIndex];
+        var propName = column.DataPropertyName;
+
+        if (_sortColumn == propName)
+            _sortOrder = (_sortOrder == SortOrder.Ascending)
+                            ? SortOrder.Descending
+                            : SortOrder.Ascending;
+        else
+        {
+            _sortColumn = propName;
+            _sortOrder = SortOrder.Ascending;
+        }
+
+        await RefreshGrid();
+    }
+
 
 
     private Button MakeButton(string txt, int l, int t, EventHandler onClick)
@@ -125,26 +155,59 @@ public sealed class SuppliesPage : Form
     {
         var all = await Supplies.GetAllAsync(null, 0);
         string filter = _txtSearchSupplies.Text.Trim().ToLower();
-
         if (!string.IsNullOrEmpty(filter))
         {
             all = all
                 .Where(s =>
-                    s.Book?.Title?.ToLower().Contains(filter) ?? false
-                    || s.OperationType.ToLower().Contains(filter))
+                    (s.Book?.Title?.ToLower().Contains(filter) ?? false)
+                    || (s.OperationType.ToLower().Contains(filter)))
                 .ToList();
         }
 
+        // ── Блок сортировки ──
+        if (!string.IsNullOrEmpty(_sortColumn) && _sortOrder != SortOrder.None)
+        {
+            switch (_sortColumn)
+            {
+                case nameof(Supply.SupplyId):
+                    all = (_sortOrder == SortOrder.Ascending)
+                        ? all.OrderBy(s => s.SupplyId).ToList()
+                        : all.OrderByDescending(s => s.SupplyId).ToList();
+                    break;
+                case "Book": // потому что в анонимном объекте свойство называется именно Book
+                    all = (_sortOrder == SortOrder.Ascending)
+                        ? all.OrderBy(s => s.Book!.Title).ToList()
+                        : all.OrderByDescending(s => s.Book!.Title).ToList();
+                    break;
+                case nameof(Supply.Date):
+                    all = (_sortOrder == SortOrder.Ascending)
+                        ? all.OrderBy(s => s.Date).ToList()
+                        : all.OrderByDescending(s => s.Date).ToList();
+                    break;
+                case "Type": // в проекции Type = s.OperationType
+                    all = (_sortOrder == SortOrder.Ascending)
+                        ? all.OrderBy(s => s.OperationType).ToList()
+                        : all.OrderByDescending(s => s.OperationType).ToList();
+                    break;
+                case nameof(Supply.Amount):
+                    all = (_sortOrder == SortOrder.Ascending)
+                        ? all.OrderBy(s => s.Amount).ToList()
+                        : all.OrderByDescending(s => s.Amount).ToList();
+                    break;
+            }
+        }
+        // ── Конец блока сортировки ──
+
         _bs.DataSource = all
-                        .Select(s => new
-                        {
-                            s.SupplyId,
-                            Book = s.Book?.Title ?? $"#{s.BookId}",
-                            s.Date,
-                            Type = s.OperationType,
-                            s.Amount
-                        })
-                        .ToList();
+            .Select(s => new
+            {
+                s.SupplyId,
+                Book = s.Book?.Title ?? $"#{s.BookId}",
+                s.Date,
+                Type = s.OperationType,
+                s.Amount
+            })
+            .ToList();
     }
 
 
@@ -180,7 +243,7 @@ internal sealed class SupplyAddDialog : Form
     private readonly TextBox _tTitle = new();
     private readonly TextBox _tAuthor = new();
     private readonly TextBox _tIsbn = new();
-    private readonly NumericUpDown _tYear = new() { Minimum = 0, Maximum = (uint)DateTime.Now.Year , Value = (uint)DateTime.Now.Year };
+    private readonly NumericUpDown _tYear = new() { Minimum = 0, Maximum = (uint)DateTime.Now.Year, Value = (uint)DateTime.Now.Year };
     private readonly NumericUpDown _tPages = new() { Minimum = 1, Maximum = 10000 };
     private readonly TextBox _tGenre = new() { Text = "Не указано" };
     private readonly TextBox _tPublisher = new() { Text = "Не указано" };
