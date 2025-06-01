@@ -11,10 +11,12 @@ public sealed class DebtorsPage : Form
     public DebtorsPage() => BuildUI();
 
     /* ───────── UI ───────── */
+    private TextBox _txtSearchDebtors = null!;
+
     private void BuildUI()
     {
         Text = "Должники";
-        MinimumSize = new Size(1000, 650);
+        MinimumSize = new Size(1400, 750);
         BackColor = Color.FromArgb(24, 24, 28);
         ForeColor = Color.Gainsboro;
         Font = new Font("Segoe UI", 10);
@@ -29,50 +31,75 @@ public sealed class DebtorsPage : Form
             Left = 20,
             Top = 20
         };
+        Controls.Add(header);
 
-        _grid = new DarkGrid(header.Bottom + 20, _bs);
-        Controls.AddRange([header, _grid]);
+        // ── Строка поиска ──
+        _txtSearchDebtors = new TextBox
+        {
+            PlaceholderText = "  Поиск по читателю или книге…",
+            Left = 20,
+            Top = header.Bottom + 15,
+            Width = 900,
+            Height = 30
+        };
+        Controls.Add(_txtSearchDebtors);
+        _txtSearchDebtors.TextChanged += async (_, __) => await RefreshGrid(); 
 
+        // ── Сам грид ──
+        _grid = new DarkGrid(_txtSearchDebtors.Bottom + 10, _bs);
+        Controls.Add(_grid);
+
+        // ... далее ваши кнопки и остальная часть BuildUI
         var btnAdd = Btn("Добавить", _grid.Left, _grid.Bottom + 15,
-                          async (_, __) =>
-                          {
-                              using var d = new DebtorDialog();
-                              if (d.ShowDialog(this) == DialogResult.OK)
-                                  await RefreshGrid();
-                          });
+                        async (_, __) =>
+                        {
+                            using var d = new DebtorDialog();
+                            if (d.ShowDialog(this) == DialogResult.OK)
+                                await RefreshGrid();
+                        });
 
         var btnEdit = Btn("Изменить", btnAdd.Right + 10, _grid.Bottom + 15,
-                          async (_, __) => await EditCurrent());
+                        async (_, __) => await EditCurrent());
 
         var btnDel = Btn("Удалить", btnEdit.Right + 10, _grid.Bottom + 15,
-                          async (_, __) => { if (await Delete()) await RefreshGrid(); });
+                        async (_, __) => { if (await Delete()) await RefreshGrid(); });
 
         Controls.AddRange([btnAdd, btnEdit, btnDel]);
 
         Shown += async (_, __) => await RefreshGrid();
     }
 
-    /* ───────── CRUD ───────── */
+        /* ───────── CRUD ───────── */
     private async Task RefreshGrid()
     {
-        _bs.DataSource = (await Debtors.GetAllAsync(null, 0))
-            .Select(d => new
-            {
-                d.DebtorId,
-                d.ReaderTicketId,
-                d.BookId,
-                Reader = d.ReaderTicket!.FullName,
-                Book = d.Book!.Title,
-                d.GetDate,
-                d.DebtDate,
-                d.ReturnDate,
-                d.DaysUntilDebt,
-                Status = d.Status ?? "—",
-                LatePenalty = d.LatePenalty?.ToString() ?? "—"
-            })
-            .ToList();
-    }
+        var all = await Debtors.GetAllAsync(null, 0);
 
+        string filter = _txtSearchDebtors.Text.Trim().ToLower();
+
+        if (!string.IsNullOrEmpty(filter))
+        {
+            all = all
+                .Where(d =>
+                    (d.ReaderTicket?.FullName?.ToLower().Contains(filter) ?? false)
+                    || (d.Book?.Title?.ToLower().Contains(filter) ?? false))
+                .ToList();
+        }
+
+        _bs.DataSource = all.Select(d => new
+        {
+            d.DebtorId,
+            Reader = d.ReaderTicket!.FullName,
+            Book = d.Book!.Title,
+            d.GetDate,
+            d.DebtDate,
+            d.ReturnDate,
+            d.DaysUntilDebt,
+            Status = d.Status ?? "—",
+            LatePenalty = d.LatePenalty?.ToString() ?? "—"
+        })
+        .ToList();
+    }
+    
     private async Task<bool> Delete()
     {
         if (_grid.CurrentRow?.Cells["DebtorId"].Value is not long id) return false;
@@ -119,7 +146,7 @@ public sealed class DebtorsPage : Form
     {
         public DarkGrid(int top, BindingSource bs)
         {
-            Left = 20; Top = top; Width = 900; Height = 450;
+            Left = 20; Top = top; Width = 1400; Height = 450;
             Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
 
             AutoGenerateColumns = true;
@@ -162,24 +189,24 @@ internal sealed class DebtorDialog : Form
 
     /* ── поиск билета ── */
     private readonly TextBox _tTicketSearch = new() { PlaceholderText = "  Поиск билета…" };
-    private readonly ListBox _lstTickets    = new() { Height = 100 };
+    private readonly ListBox _lstTickets = new() { Height = 100 };
 
     /* ── поиск книги ── */
     private readonly TextBox _tBookSearch = new() { PlaceholderText = "  Поиск книги…" };
-    private readonly ListBox _lstBooks    = new() { Height = 100 };
+    private readonly ListBox _lstBooks = new() { Height = 100 };
 
     /* даты, статус, штраф */
-    private readonly DateTimePicker _dtGet    = new() { Value = DateTime.Today };
-    private readonly DateTimePicker _dtDebt   = new() { Value = DateTime.Today.AddDays(14) };
+    private readonly DateTimePicker _dtGet = new() { Value = DateTime.Today };
+    private readonly DateTimePicker _dtDebt = new() { Value = DateTime.Today.AddDays(14) };
     private readonly DateTimePicker _dtReturn = new();                // может быть пустым
-    private readonly ComboBox       _cbStatus = new() { DropDownStyle = ComboBoxStyle.DropDownList };
-    private readonly NumericUpDown  _numPenalty = new() { Minimum = 0, Maximum = 10000, DecimalPlaces = 2 };
+    private readonly ComboBox _cbStatus = new() { DropDownStyle = ComboBoxStyle.DropDownList };
+    private readonly NumericUpDown _numPenalty = new() { Minimum = 0, Maximum = 10000, DecimalPlaces = 2 };
 
     /* отображаемые дни до/после долга */
     private readonly Label _lblDays = new() { AutoSize = true };
 
     private ReaderTicket? _selTicket;
-    private Book?         _selBook;
+    private Book? _selBook;
 
     public DebtorDialog(Debtor? existing = null)
     {
@@ -190,12 +217,12 @@ internal sealed class DebtorDialog : Form
     /* ───────── UI ───────── */
     private async void BuildUI()
     {
-        Text          = "Должник";
-        Size          = new Size(600, 720);
+        Text = "Должник";
+        Size = new Size(600, 720);
         StartPosition = FormStartPosition.CenterParent;
-        BackColor     = Color.FromArgb(40, 40, 46);
-        ForeColor     = Color.Gainsboro;
-        Font          = new Font("Segoe UI", 10);
+        BackColor = Color.FromArgb(40, 40, 46);
+        ForeColor = Color.Gainsboro;
+        Font = new Font("Segoe UI", 10);
 
         _cbStatus.Items.AddRange(Enum.GetValues(typeof(DebtorStatus)).Cast<object>().ToArray());
         _cbStatus.SelectedItem = Enum.GetValues(typeof(DebtorStatus))
@@ -205,11 +232,11 @@ internal sealed class DebtorDialog : Form
         int y = 20;
         Controls.Add(L("Билет", 20, y));
         Pos(_tTicketSearch, 140, y - 3, 420); Controls.Add(_tTicketSearch);
-        Pos(_lstTickets, 140, y += 30, 420);  Controls.Add(_lstTickets);
+        Pos(_lstTickets, 140, y += 30, 420); Controls.Add(_lstTickets);
 
         Controls.Add(L("Книга", 20, y += _lstTickets.Height + 10));
         Pos(_tBookSearch, 140, y - 3, 420); Controls.Add(_tBookSearch);
-        Pos(_lstBooks, 140, y += 30, 420);   Controls.Add(_lstBooks);
+        Pos(_lstBooks, 140, y += 30, 420); Controls.Add(_lstBooks);
 
         Controls.Add(L("Дата выдачи", 20, y += _lstBooks.Height + 10));
         Pos(_dtGet, 140, y - 3, 200); Controls.Add(_dtGet);
@@ -234,7 +261,7 @@ internal sealed class DebtorDialog : Form
         {
             Text = "Сохранить",
             DialogResult = DialogResult.OK,
-            Width  = 160,
+            Width = 160,
             Height = 46,
             BackColor = Color.FromArgb(98, 0, 238),
             ForeColor = Color.White,
@@ -243,10 +270,10 @@ internal sealed class DebtorDialog : Form
         Pos(btnOk, Width / 2 - 80, y + 45); Controls.Add(btnOk);
 
         /* ── загрузка списков ── */
-        _lstTickets.DataSource    = (await ReaderTickets.GetAllAsync(null, 0)).ToList();
+        _lstTickets.DataSource = (await ReaderTickets.GetAllAsync(null, 0)).ToList();
         _lstTickets.DisplayMember = "FullName";
-        _lstBooks.DataSource      = (await Books.GetAllAsync(null, 0)).ToList();
-        _lstBooks.DisplayMember   = "Title";
+        _lstBooks.DataSource = (await Books.GetAllAsync(null, 0)).ToList();
+        _lstBooks.DisplayMember = "Title";
 
         /* ── поиск ── */
         _tTicketSearch.TextChanged += async (_, __) =>
@@ -276,20 +303,20 @@ internal sealed class DebtorDialog : Form
                         .FirstOrDefault(b => b.BookId == _model.BookId);
             _lstBooks.SelectedItem = _selBook;
 
-            _dtGet.Value  = _model.GetDate.ToDateTime(TimeOnly.MinValue);
+            _dtGet.Value = _model.GetDate.ToDateTime(TimeOnly.MinValue);
             _dtDebt.Value = _model.DebtDate.ToDateTime(TimeOnly.MinValue);
 
             if (_model.ReturnDate is { } ret)
             {
                 _dtReturn.Format = DateTimePickerFormat.Long;
-                _dtReturn.Value  = ret.ToDateTime(TimeOnly.MinValue);
+                _dtReturn.Value = ret.ToDateTime(TimeOnly.MinValue);
             }
 
             _numPenalty.Value = (decimal)(_model.LatePenalty ?? 0);
         }
 
         void RecalcDays() => _lblDays.Text = CalculateDays().ToString();
-        _dtDebt.ValueChanged   += (_, __) => RecalcDays();
+        _dtDebt.ValueChanged += (_, __) => RecalcDays();
         _dtReturn.ValueChanged += (_, __) => { _dtReturn.Format = DateTimePickerFormat.Long; RecalcDays(); };
         RecalcDays();
 
@@ -304,15 +331,15 @@ internal sealed class DebtorDialog : Form
             }
 
             _model.ReaderTicketId = _selTicket.ReaderTicketId;
-            _model.BookId         = _selBook.BookId;
-            _model.GetDate        = DateOnly.FromDateTime(_dtGet.Value.Date);
-            _model.DebtDate       = DateOnly.FromDateTime(_dtDebt.Value.Date);
-            _model.ReturnDate     = _dtReturn.Format == DateTimePickerFormat.Long
+            _model.BookId = _selBook.BookId;
+            _model.GetDate = DateOnly.FromDateTime(_dtGet.Value.Date);
+            _model.DebtDate = DateOnly.FromDateTime(_dtDebt.Value.Date);
+            _model.ReturnDate = _dtReturn.Format == DateTimePickerFormat.Long
                                   ? DateOnly.FromDateTime(_dtReturn.Value.Date)
                                   : null;
-            _model.Status         = ((DebtorStatus)_cbStatus.SelectedItem!).Text();
-            _model.LatePenalty    = _numPenalty.Value > 0 ? (double)_numPenalty.Value : null;
-            _model.DaysUntilDebt  = CalculateDays();
+            _model.Status = ((DebtorStatus)_cbStatus.SelectedItem!).Text();
+            _model.LatePenalty = (double)_numPenalty.Value;
+            _model.DaysUntilDebt = CalculateDays();
 
             if (_model.DebtorId == 0)
                 await Debtors.AddAsync(_model);
@@ -327,7 +354,7 @@ internal sealed class DebtorDialog : Form
         var refDate = _dtReturn.Format == DateTimePickerFormat.Long
                       ? _dtReturn.Value.Date
                       : DateTime.Today;
-        return (refDate - _dtDebt.Value.Date).Days;
+        return Math.Abs((refDate - _dtDebt.Value.Date).Days);
     }
 
     private static Label L(string t, int x, int y) => new() { Text = t, AutoSize = true, Left = x, Top = y };

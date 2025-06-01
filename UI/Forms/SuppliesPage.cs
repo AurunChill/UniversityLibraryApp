@@ -15,10 +15,12 @@ public sealed class SuppliesPage : Form
     }
 
     /* ───────── UI ───────── */
+   private TextBox _txtSearchSupplies = null!;
+
     private void BuildUI()
     {
         Text = "Поставки / Списание / Долги";
-        MinimumSize = new Size(1000, 700);
+        MinimumSize = new Size(1000, 800);
         StartPosition = FormStartPosition.CenterParent;
         BackColor = Color.FromArgb(24, 24, 28);
         Font = new Font("Segoe UI", 10);
@@ -33,13 +35,28 @@ public sealed class SuppliesPage : Form
             Left = 20,
             Top = 20
         };
+        Controls.Add(header);
 
+        // ── Строка поиска для Supplies ──
+        _txtSearchSupplies = new TextBox
+        {
+            PlaceholderText = "  Поиск по книге или типу операции…",
+            Left = 20,
+            Top = header.Bottom + 15,
+            Width = ClientSize.Width - 40,  // можно подогнать
+            Height = 30
+        };
+        Controls.Add(_txtSearchSupplies);
+        _txtSearchSupplies.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+        _txtSearchSupplies.TextChanged += async (_, __) => await RefreshGrid();
+
+        // ── Сам грид ──
         _grid = new DataGridView
         {
             Left = 20,
-            Top = header.Bottom + 20,
+            Top = _txtSearchSupplies.Bottom + 10,
             Width = ClientSize.Width - 40,
-            Height = ClientSize.Height - header.Bottom - 80,
+            Height = ClientSize.Height - header.Bottom - 200,
             Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
             BackgroundColor = Color.FromArgb(40, 40, 46),
             ForeColor = Color.Gainsboro,
@@ -69,19 +86,19 @@ public sealed class SuppliesPage : Form
             BackColor = Color.FromArgb(40, 40, 46)
         };
 
-        _grid.BorderStyle = BorderStyle.None;                   // убираем серую рамку
+        _grid.BorderStyle = BorderStyle.None;                   
         _grid.CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal;
-
 
         var btnAdd = MakeButton("Добавить", _grid.Left, _grid.Bottom + 15,
                                 async (_, __) => { if (AddSupply()) await RefreshGrid(); });
         var btnDel = MakeButton("Удалить", btnAdd.Right + 10, _grid.Bottom + 15,
                                 async (_, __) => { if (await DeleteSupply()) await RefreshGrid(); });
 
-        Controls.AddRange([header, _grid, btnAdd, btnDel]);
+        Controls.AddRange(new Control[] { header, _txtSearchSupplies, _grid, btnAdd, btnDel });
 
         Shown += async (_, __) => await RefreshGrid();
     }
+
 
     private Button MakeButton(string txt, int l, int t, EventHandler onClick)
     {
@@ -104,20 +121,32 @@ public sealed class SuppliesPage : Form
     }
 
 
-    /* ───────── CRUD ───────── */
     private async Task RefreshGrid()
     {
-        _bs.DataSource = (await Supplies.GetAllAsync(null, 0))
-                         .Select(s => new
-                         {
-                             s.SupplyId,
-                             Book = s.Book?.Title ?? $"#{s.BookId}",
-                             s.Date,
-                             Type = s.OperationType,
-                             s.Amount
-                         })
-                         .ToList();
+        var all = await Supplies.GetAllAsync(null, 0);
+        string filter = _txtSearchSupplies.Text.Trim().ToLower();
+
+        if (!string.IsNullOrEmpty(filter))
+        {
+            all = all
+                .Where(s =>
+                    s.Book?.Title?.ToLower().Contains(filter) ?? false
+                    || s.OperationType.ToLower().Contains(filter))
+                .ToList();
+        }
+
+        _bs.DataSource = all
+                        .Select(s => new
+                        {
+                            s.SupplyId,
+                            Book = s.Book?.Title ?? $"#{s.BookId}",
+                            s.Date,
+                            Type = s.OperationType,
+                            s.Amount
+                        })
+                        .ToList();
     }
+
 
     private async Task<bool> DeleteSupply()
     {

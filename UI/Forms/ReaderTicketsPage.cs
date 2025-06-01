@@ -10,37 +10,50 @@ public sealed class ReaderTicketsPage : Form
     public ReaderTicketsPage() => BuildUI();
 
     /* ───────── UI ───────── */
+   private TextBox _txtSearchTickets = null!;
+
     private void BuildUI()
     {
-        /* окно */
-        Text          = "Читательские билеты";
-        MinimumSize   = new Size(900, 650);
+        Text = "Читательские билеты";
+        MinimumSize = new Size(900, 650);
         StartPosition = FormStartPosition.CenterParent;
-        BackColor     = Color.FromArgb(24, 24, 28);
-        ForeColor     = Color.Gainsboro;
-        Font          = new Font("Segoe UI", 10);
+        BackColor = Color.FromArgb(24, 24, 28);
+        ForeColor = Color.Gainsboro;
+        Font = new Font("Segoe UI", 10);
 
-        /* заголовок */
+        // Заголовок
         var header = new Label
         {
-            Text      = Text,
-            Font      = new Font("Segoe UI", 22, FontStyle.Bold),
+            Text = Text,
+            Font = new Font("Segoe UI", 22, FontStyle.Bold),
             ForeColor = Color.White,
-            AutoSize  = true,
-            Left      = 20,
-            Top       = 20
+            AutoSize = true,
+            Left = 20,
+            Top = 20
         };
         Controls.Add(header);
 
-        /* таблица */
+        // ── Строка поиска
+        _txtSearchTickets = new TextBox
+        {
+            PlaceholderText = "  Поиск по ФИО, e-mail или телефону…",
+            Left = 20,
+            Top = header.Bottom + 15,
+            Width = 800,
+            Height = 30
+        };
+        Controls.Add(_txtSearchTickets);
+        _txtSearchTickets.TextChanged += async (_, __) => await RefreshGrid();
+
+        // ── Сам грид
         _grid = CreateDarkGrid();
-        _grid.Top  = header.Bottom + 20;
+        _grid.Top = _txtSearchTickets.Bottom + 10;
         Controls.Add(_grid);
 
-        /* кнопки */
+        // ── Кнопки
         var btnAdd = MakeButton("Добавить");
         btnAdd.Left = _grid.Left;
-        btnAdd.Top  = _grid.Bottom + 15;
+        btnAdd.Top = _grid.Bottom + 15;
         btnAdd.Click += async (_, __) =>
         {
             using var dlg = new ReaderTicketDialog();
@@ -50,32 +63,47 @@ public sealed class ReaderTicketsPage : Form
 
         var btnDel = MakeButton("Удалить");
         btnDel.Left = btnAdd.Right + 10;
-        btnDel.Top  = btnAdd.Top;
+        btnDel.Top = btnAdd.Top;
         btnDel.Click += async (_, __) =>
         {
             if (await DeleteTicket())
                 await RefreshGrid();
         };
 
-        Controls.AddRange(new Control[] { btnAdd, btnDel });
+        Controls.AddRange([btnAdd, btnDel]);
 
         Shown += async (_, __) => await RefreshGrid();
     }
 
-    /* ───────── бизнес ───────── */
-    private async Task RefreshGrid()
+
+   private async Task RefreshGrid()
     {
-        _bs.DataSource = (await ReaderTickets.GetAllAsync(null, 0))
-                         .Select(r => new
-                         {
-                             r.ReaderTicketId,
-                             r.FullName,
-                             r.Email,
-                             r.PhoneNumber,
-                             r.ExtraPhoneNumber
-                         })
-                         .ToList();
+        var all = await ReaderTickets.GetAllAsync(null, 0);
+        string filter = _txtSearchTickets.Text.Trim().ToLower();
+
+        if (!string.IsNullOrEmpty(filter))
+        {
+            all = all
+                .Where(r =>
+                    (r.FullName?.ToLower().Contains(filter) ?? false)
+                    || (r.Email?.ToLower().Contains(filter) ?? false)
+                    || (r.PhoneNumber?.ToLower().Contains(filter) ?? false)
+                    || (r.ExtraPhoneNumber?.ToLower().Contains(filter) ?? false))
+                .ToList();
+        }
+
+        _bs.DataSource = all
+                        .Select(r => new
+                        {
+                            r.ReaderTicketId,
+                            r.FullName,
+                            r.Email,
+                            r.PhoneNumber,
+                            r.ExtraPhoneNumber
+                        })
+                        .ToList();
     }
+
 
     private async Task<bool> DeleteTicket()
     {
@@ -88,38 +116,37 @@ public sealed class ReaderTicketsPage : Form
         return await ReaderTickets.DeleteAsync(id);
     }
 
-    /* ───────── helpers ───────── */
     private DataGridView CreateDarkGrid()
     {
         var gv = new DataGridView
         {
-            Left  = 20,
+            Left = 20,
             Width = 800,
-            Height = 450,
+            Height = 350,
             Anchor = AnchorStyles.Top | AnchorStyles.Bottom |
                      AnchorStyles.Left | AnchorStyles.Right,
 
             AutoGenerateColumns = true,
-            ReadOnly            = true,
-            DataSource          = _bs,
+            ReadOnly = true,
+            DataSource = _bs,
 
             BackgroundColor = Color.FromArgb(40, 40, 46),
-            ForeColor       = Color.Gainsboro,
+            ForeColor = Color.Gainsboro,
 
-            BorderStyle     = BorderStyle.None,
+            BorderStyle = BorderStyle.None,
             CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal
         };
 
         /* базовые стили */
         var baseStyle = new DataGridViewCellStyle
         {
-            BackColor          = Color.FromArgb(40, 40, 46),
-            ForeColor          = Color.Gainsboro,
+            BackColor = Color.FromArgb(40, 40, 46),
+            ForeColor = Color.Gainsboro,
             SelectionBackColor = Color.FromArgb(98, 0, 238),
             SelectionForeColor = Color.White
         };
-        gv.DefaultCellStyle            = baseStyle;
-        gv.RowsDefaultCellStyle        = baseStyle;
+        gv.DefaultCellStyle = baseStyle;
+        gv.RowsDefaultCellStyle = baseStyle;
         gv.AlternatingRowsDefaultCellStyle = new DataGridViewCellStyle(baseStyle)
         {
             BackColor = Color.FromArgb(32, 32, 38)
@@ -136,36 +163,36 @@ public sealed class ReaderTicketsPage : Form
 
     private static Button MakeButton(string text) => new()
     {
-        Text      = text,
-        Width     = 110,
-        Height    = 36,
+        Text = text,
+        Width = 110,
+        Height = 36,
         BackColor = Color.FromArgb(98, 0, 238),
         ForeColor = Color.White,
         FlatStyle = FlatStyle.Flat,
-        Cursor    = Cursors.Hand
+        Cursor = Cursors.Hand
     };
 }
 
 /* ───────── диалог создания билета ───────── */
 internal sealed class ReaderTicketDialog : Form
 {
-    private readonly TextBox tName  = new();
+    private readonly TextBox tName = new();
     private readonly TextBox tEmail = new();
     private readonly TextBox tPhone = new();
     private readonly TextBox tExtra = new();
 
     public ReaderTicketDialog()
     {
-        Text          = "Новый билет";
-        Size          = new Size(420, 300);
-        BackColor     = Color.FromArgb(40, 40, 46);
-        ForeColor     = Color.Gainsboro;
-        Font          = new Font("Segoe UI", 10);
+        Text = "Новый билет";
+        Size = new Size(420, 465);
+        BackColor = Color.FromArgb(40, 40, 46);
+        ForeColor = Color.Gainsboro;
+        Font = new Font("Segoe UI", 10);
         StartPosition = FormStartPosition.CenterParent;
 
         int y = 20;
-        Controls.AddRange(new Control[]
-        {
+        Controls.AddRange(
+        [
             Label("ФИО", 20, y),
             TextBox(tName, 150, y - 3, 240),
 
@@ -177,18 +204,19 @@ internal sealed class ReaderTicketDialog : Form
 
             Label("Доп.тел", 20, y += 35),
             TextBox(tExtra, 150, y - 3, 240)
-        });
+        ]);
 
         var ok = new Button
         {
-            Text         = "Сохранить",
+            Text = "Сохранить",
             DialogResult = DialogResult.OK,
-            Left         = Width / 2 - 70,
-            Top          = 230,
-            Width        = 140,
-            BackColor    = Color.FromArgb(98, 0, 238),
-            ForeColor    = Color.White,
-            FlatStyle    = FlatStyle.Flat
+            Left = Width / 2 - 70,
+            Top = 230,
+            Width = 140,
+            Height = 55,
+            BackColor = Color.FromArgb(98, 0, 238),
+            ForeColor = Color.White,
+            FlatStyle = FlatStyle.Flat
         };
         Controls.Add(ok);
 
@@ -204,9 +232,9 @@ internal sealed class ReaderTicketDialog : Form
 
             await ReaderTickets.AddAsync(new ReaderTicket
             {
-                FullName         = tName.Text,
-                Email            = tEmail.Text,
-                PhoneNumber      = tPhone.Text,
+                FullName = tName.Text,
+                Email = tEmail.Text,
+                PhoneNumber = tPhone.Text,
                 ExtraPhoneNumber = tExtra.Text
             });
         };
@@ -215,7 +243,10 @@ internal sealed class ReaderTicketDialog : Form
     /* мелкие фабрики */
     private static Label Label(string text, int x, int y) => new()
     {
-        Text = text, AutoSize = true, Left = x, Top = y
+        Text = text,
+        AutoSize = true,
+        Left = x,
+        Top = y
     };
 
     private static TextBox TextBox(TextBox tb, int x, int y, int width)

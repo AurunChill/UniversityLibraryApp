@@ -19,8 +19,6 @@ internal static class Program
             args.Length > 0 && args[0] == "--test" ? "library_test.db" : "library.db"
         );
 
-        /* 👉 вместо AddSqlite используем AddDbContextFactory
-            (контекст остаётся тем же, просто получаем фабрику) */
         builder.Services.AddDbContextFactory<LibraryContext>(opt =>
             opt.UseSqlite($"Data Source={dbPath}"));
 
