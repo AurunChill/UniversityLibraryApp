@@ -1,9 +1,8 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
-using LibraryApp.Data.Models;
 
-namespace LibraryApp.Data;
+namespace LibraryApp.Data.Models;
 
 [Index(nameof(ReaderTicketId), nameof(BookId), IsUnique = true)]
 [Table("Debtor")]
@@ -45,7 +44,9 @@ public static class Debtors
     public static IDbContextFactory<LibraryContext> Factory { get; private set; } = null!;
     public static void Init(IDbContextFactory<LibraryContext> f) => Factory = f;
 
-    /* базовые */
+    /// <summary>
+    /// Возвращает все записи должников с навигационными свойствами Book и ReaderTicket.
+    /// </summary>
     public static async Task<IReadOnlyList<Debtor>> GetAllAsync(int? limit = null, int off = 0)
     {
         await using var db = await Factory.CreateDbContextAsync();
@@ -58,6 +59,9 @@ public static class Debtors
         return await q.ToListAsync();
     }
 
+    /// <summary>
+    /// Получает одну запись должника по его ID.
+    /// </summary>
     public static async Task<Debtor?> GetByIdAsync(long id)
     {
         await using var db = await Factory.CreateDbContextAsync();
@@ -68,28 +72,41 @@ public static class Debtors
                        .FirstOrDefaultAsync(x => x.DebtorId == id);
     }
 
+    /// <summary>
+    /// Удаляет запись должника по её ID.
+    /// </summary>
     public static async Task<bool> DeleteAsync(long id)
     {
         await using var db = await Factory.CreateDbContextAsync();
         var e = await db.Debtors.FindAsync(id);
         if (e is null) return false;
+
         db.Debtors.Remove(e);
         return await db.SaveChangesAsync() > 0;
     }
 
+    /// <summary>
+    /// Добавляет новую запись должника.
+    /// При выдаче книги автовычисляются DaysUntilDebt (по d.DebtDate) и LatePenalty = 0, 
+    /// затем создаётся операция "долг" (Supply.OperationType = "долг") с Amount = 1.
+    /// </summary>
     public static async Task<Debtor> AddAsync(Debtor d)
     {
+        // 1. Рассчитываем начальное значение DaysUntilDebt
         d.DaysUntilDebt = CalcDays(d);
+        // 2. При выдаче штраф пока 0
+        d.LatePenalty = 0;
 
         await using var db = await Factory.CreateDbContextAsync();
         db.Debtors.Add(d);
         await db.SaveChangesAsync();
 
+        // 3. Создаём операцию "долг" в журнале Supply
         var issueSupply = new Supply
         {
             BookId = d.BookId,
             Date = d.GetDate,
-            OperationType = OperationType.Долг.Text(), // "долг"
+            OperationType = OperationType.Долг.Text(), // строка "долг"
             Amount = 1
         };
         await Supplies.AddAsync(issueSupply);
@@ -97,8 +114,17 @@ public static class Debtors
         return d;
     }
 
+    /// <summary>
+    /// Обновляет существующую запись должника.
+    /// При возврате книги (если ReturnDate ранее был null, а теперь задан):
+    ///  - пересчитывается DaysUntilDebt;
+    ///  - если фактическая дата позже DebtDate, LatePenalty = DaysUntilDebt * 30;
+    ///  - создаётся операция "приход" (Supply.OperationType = "приход") с Amount = 1;
+    /// иначе LatePenalty = 0 и операции не создаётся.
+    /// </summary>
     public static async Task<bool> UpdateAsync(Debtor d)
     {
+        // 1. Всегда пересчитываем DaysUntilDebt (по фактической дате или сегодня)
         d.DaysUntilDebt = CalcDays(d);
 
         await using var db = await Factory.CreateDbContextAsync();
@@ -109,16 +135,32 @@ public static class Debtors
         bool wasReturned = original?.ReturnDate != null;
         bool nowReturned = d.ReturnDate != null;
 
+        // 2. Рассчитываем штраф, если книга возвращена
+        if (nowReturned)
+        {
+            // Если фактическая дата позже DebtDate, есть просрочка
+            if (d.ReturnDate > d.DebtDate)
+                d.LatePenalty = d.DaysUntilDebt * 30.0;
+            else
+                d.LatePenalty = 0;
+        }
+        else
+        {
+            // Если возврат ещё не произошёл, штраф = 0
+            d.LatePenalty = 0;
+        }
+
         db.Debtors.Update(d);
         bool ok = await db.SaveChangesAsync() > 0;
 
+        // 3. Если раньше не было ReturnDate, а теперь задана — создаём операцию "приход"
         if (ok && !wasReturned && nowReturned)
         {
             var returnSupply = new Supply
             {
                 BookId = d.BookId,
                 Date = d.ReturnDate!.Value,
-                OperationType = OperationType.Приход.Text(), 
+                OperationType = OperationType.Приход.Text(), // строка "приход"
                 Amount = 1
             };
             await Supplies.AddAsync(returnSupply);
@@ -127,14 +169,22 @@ public static class Debtors
         return ok;
     }
 
+    /// <summary>
+    /// Подсчитывает разницу в днях между DebtDate и либо ReturnDate, либо сегодняшней датой (если ReturnDate == null).
+    /// </summary>
     private static int CalcDays(Debtor d)
     {
+        // Используем DateOnly → DateTime для расчёта TimeSpan
         var refDt = d.ReturnDate ?? DateOnly.FromDateTime(DateTime.Today);
         var span = refDt.ToDateTime(TimeOnly.MinValue) - d.DebtDate.ToDateTime(TimeOnly.MinValue);
         return Math.Abs(span.Days);
     }
 
-    /* дополнительные запросы */
+    /* дополнительные методы для получения только открытых долгов, удаления закрытых и т. д. */
+
+    /// <summary>
+    /// Возвращает список должников с открытыми долгами (статус «Просрочено», «Возвращено без оплаты» или «Утеряно»).
+    /// </summary>
     public static async Task<IReadOnlyList<Debtor>> GetOpenDebtsAsync()
     {
         await using var db = await Factory.CreateDbContextAsync();
@@ -149,6 +199,9 @@ public static class Debtors
                        .ToListAsync();
     }
 
+    /// <summary>
+    /// Удаляет все записи должников со статусом «В срок» или «Просрочено возвращено с оплатой».
+    /// </summary>
     public static async Task<int> DeleteClosedAsync()
     {
         await using var db = await Factory.CreateDbContextAsync();
@@ -159,6 +212,9 @@ public static class Debtors
         return cnt;
     }
 
+    /// <summary>
+    /// Возвращает кортеж (BookId, Title) для текущих долгов конкретного читателя.
+    /// </summary>
     public static async Task<IReadOnlyList<(long id, string title)>> GetDebtsForReaderAsync(long ticketId)
     {
         await using var db = await Factory.CreateDbContextAsync();
@@ -167,7 +223,10 @@ public static class Debtors
                        .Where(d =>
                            d.ReaderTicketId == ticketId &&
                            (d.Status == DebtorStatus.Просрочено.Text() || d.Status == DebtorStatus.В_Срок.Text()))
-                       .Select(d => new ValueTuple<long, string>(d.BookId, d.Book!.Title))
-                       .ToListAsync();
+                       .Select(d => new { d.BookId, d.Book!.Title })
+                       .ToListAsync()
+                       .ContinueWith(t => (IReadOnlyList<(long id, string title)>)t.Result
+                           .Select(x => (x.BookId, x.Title))
+                           .ToList());
     }
 }

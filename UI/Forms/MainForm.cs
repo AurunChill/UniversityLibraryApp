@@ -9,6 +9,8 @@ namespace LibraryApp.UI.Forms
         private FlowLayoutPanel? _cardPanel;
         private Label? _countLabel;
         private TextBox? _search;
+        private Button? _sortButton;
+        private bool _sortByTitleAscending = true;
 
         public MainForm()
         {
@@ -38,16 +40,39 @@ namespace LibraryApp.UI.Forms
             _search = CreateSearchBox(marginTopStart: mainLabel.Bottom);
 
             // Статус-панель (отображает количество найденных книг и «Обновить»)
-            var statusLabel = CreateStatusPanel(marginTopStart: _search.Bottom);
+            var statusPanel = CreateStatusPanel(marginTopStart: _search.Bottom);
+
+            // Кнопка сортировки
+            _sortButton = new Button
+            {
+                Text = "Сортировать",
+                Width = 130,
+                Height = 32,
+                // После увеличения высоты statusPanel теперь можно поместить кнопку внутри
+                Left = statusPanel.Width - 150,
+                Top = 35,
+                BackColor = Color.FromArgb(98, 0, 238),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Cursor = Cursors.Hand,
+                Anchor = AnchorStyles.Top | AnchorStyles.Right
+            };
+            _sortButton.Click += async (_, __) =>
+            {
+                // Инвертируем направление и перезагружаем карточки
+                _sortByTitleAscending = !_sortByTitleAscending;
+                await LoadCardsAsync(query: _search!.Text);
+            };
+            statusPanel.Controls.Add(_sortButton);
 
             // Панель карточек с обложками книг
-            _cardPanel = CreateCardPanel(margintopStart: statusLabel.Bottom);
+            _cardPanel = CreateCardPanel(margintopStart: statusPanel.Bottom);
 
             // Добавляем всё на форму
             Controls.Add(navigation);
             Controls.Add(mainLabel);
             Controls.Add(_search);
-            Controls.Add(statusLabel);
+            Controls.Add(statusPanel);
             Controls.Add(_cardPanel);
 
             ActiveControl = mainLabel;
@@ -161,7 +186,8 @@ namespace LibraryApp.UI.Forms
         }
 
         /// <summary>
-        /// Создаёт панель, в которой отображается число найденных книг и ссылка "Обновить список".
+        /// Создаёт панель, в которой отображается число найденных книг, ссылка "Обновить список"
+        /// и теперь место для кнопки сортировки.
         /// </summary>
         private Panel CreateStatusPanel(int marginTopStart = 0)
         {
@@ -170,7 +196,7 @@ namespace LibraryApp.UI.Forms
                 Top = marginTopStart,
                 Left = 0,
                 Width = _screenBounds.Width,
-                Height = 24,
+                Height = 70, // Увеличили высоту, чтобы вместить кнопку
                 BackColor = Color.Transparent
             };
 
@@ -178,7 +204,7 @@ namespace LibraryApp.UI.Forms
             {
                 AutoSize = true,
                 Left = 12,
-                Top = 4,
+                Top = 6,
                 ForeColor = Color.Gainsboro,
                 Font = new Font("Segoe UI", 9)
             };
@@ -192,7 +218,7 @@ namespace LibraryApp.UI.Forms
                 ActiveLinkColor = Color.White
             };
             refreshLink.Left = panel.Width - refreshLink.PreferredWidth - 20;
-            refreshLink.Top = 4;
+            refreshLink.Top = 6;
             refreshLink.Anchor = AnchorStyles.Top | AnchorStyles.Right;
 
             refreshLink.Click += async (_, __) => await LoadCardsAsync(query: _search!.Text);
@@ -236,6 +262,13 @@ namespace LibraryApp.UI.Forms
                 ? await Books.GetAllAsync(null, 0)
                 : await Books.FullTextAsync(query);
 
+            if (_sortButton is not null)
+            {
+                books = _sortByTitleAscending
+                    ? books.OrderBy(b => b.Title, StringComparer.OrdinalIgnoreCase).ToList()
+                    : books.OrderByDescending(b => b.Title, StringComparer.OrdinalIgnoreCase).ToList();
+            }
+
             foreach (var book in books)
             {
                 var card = CreateBookCard(book);
@@ -263,8 +296,8 @@ namespace LibraryApp.UI.Forms
 
             // Путь к изображению обложки
             string imgPath = Path.Combine(
-                AppDomain.CurrentDomain.BaseDirectory, 
-                "AppData", "Media", "Covers", 
+                AppDomain.CurrentDomain.BaseDirectory,
+                "AppData", "Media", "Covers",
                 book.CoverUrl
             );
 
