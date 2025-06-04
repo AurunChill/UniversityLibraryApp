@@ -124,13 +124,15 @@ public static class Debtors
     /// </summary>
     public static async Task<bool> UpdateAsync(Debtor d)
     {
-        // 1. Всегда пересчитываем DaysUntilDebt (по фактической дате или сегодня)
+        // 1. Пересчитываем DaysUntilDebt
         d.DaysUntilDebt = CalcDays(d);
 
         await using var db = await Factory.CreateDbContextAsync();
+
+        // Получаем оригинальную запись (старую ReturnDate!)
         var original = await db.Debtors
-                               .AsNoTracking()
-                               .FirstOrDefaultAsync(x => x.DebtorId == d.DebtorId);
+                            .AsNoTracking()
+                            .FirstOrDefaultAsync(x => x.DebtorId == d.DebtorId);
 
         bool wasReturned = original?.ReturnDate != null;
         bool nowReturned = d.ReturnDate != null;
@@ -138,30 +140,29 @@ public static class Debtors
         // 2. Рассчитываем штраф, если книга возвращена
         if (nowReturned)
         {
-            // Если фактическая дата позже DebtDate, есть просрочка
-            if (d.ReturnDate > d.DebtDate)
+            // Штраф только если вернул ПОЗЖЕ, т.е. DaysUntilDebt > 0
+            if (d.DaysUntilDebt > 0)
                 d.LatePenalty = d.DaysUntilDebt * 30.0;
             else
                 d.LatePenalty = 0;
         }
         else
         {
-            // Если возврат ещё не произошёл, штраф = 0
             d.LatePenalty = 0;
         }
 
         db.Debtors.Update(d);
         bool ok = await db.SaveChangesAsync() > 0;
 
-        // 3. Если раньше не было ReturnDate, а теперь задана — создаём операцию "приход"
+        // 3. Если книга только сейчас возвращена — создаём поставку-приход
         if (ok && !wasReturned && nowReturned)
         {
             var returnSupply = new Supply
             {
-                BookId = d.BookId,
-                Date = d.ReturnDate!.Value,
-                OperationType = OperationType.Приход.Text(), // строка "приход"
-                Amount = 1
+                BookId        = d.BookId,
+                Date          = d.ReturnDate!.Value,
+                OperationType = OperationType.Приход.Text(),
+                Amount        = 1
             };
             await Supplies.AddAsync(returnSupply);
         }
@@ -174,11 +175,11 @@ public static class Debtors
     /// </summary>
     private static int CalcDays(Debtor d)
     {
-        // Используем DateOnly → DateTime для расчёта TimeSpan
         var refDt = d.ReturnDate ?? DateOnly.FromDateTime(DateTime.Today);
         var span = refDt.ToDateTime(TimeOnly.MinValue) - d.DebtDate.ToDateTime(TimeOnly.MinValue);
-        return Math.Abs(span.Days);
+        return span.Days;
     }
+
 
     /* дополнительные методы для получения только открытых долгов, удаления закрытых и т. д. */
 

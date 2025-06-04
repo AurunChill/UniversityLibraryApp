@@ -314,8 +314,8 @@ namespace LibraryApp.UI.Forms
             RoundCorners(pic, 12, topOnly: true);
 
             // Короткое отображение title/author
-            string title = book.Title.Length > 25 ? book.Title[..22] + "..." : book.Title;
-            string author = book.Author.Length > 25 ? book.Author[..22] + "..." : book.Author;
+            string title = book.Title.Length > 15 ? book.Title[..12] + "..." : book.Title;
+            string author = book.Author.Length > 15 ? book.Author[..12] + "..." : book.Author;
 
             var textPanel = new Panel
             {

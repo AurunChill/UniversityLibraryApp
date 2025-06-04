@@ -111,11 +111,13 @@ namespace LibraryApp.UI.Forms
                 Left = 0,
                 Top = y,
                 Font = new Font("Segoe UI", sz, st),
-                ForeColor = c ?? Color.Gainsboro
+                ForeColor = c ?? Color.Gainsboro,
+                MaximumSize = new Size(parent.Width - 20, 0), // автоматически переносит строки
             };
             y += lbl.PreferredHeight + 8;
             return lbl;
         }
+
 
         private static void Round(Control c, int r)
         {
