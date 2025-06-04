@@ -173,12 +173,13 @@ public static class Debtors
     /// <summary>
     /// Подсчитывает разницу в днях между DebtDate и либо ReturnDate, либо сегодняшней датой (если ReturnDate == null).
     /// </summary>
-    private static int CalcDays(Debtor d)
-    {
-        var refDt = d.ReturnDate ?? DateOnly.FromDateTime(DateTime.Today);
-        var span = refDt.ToDateTime(TimeOnly.MinValue) - d.DebtDate.ToDateTime(TimeOnly.MinValue);
-        return span.Days;
-    }
+        private static int CalcDays(Debtor d)
+        {
+            // days_until_debt = DebtDate - (ReturnDate или сегодня)
+            var current = d.ReturnDate ?? DateOnly.FromDateTime(DateTime.Today);
+            var days = d.DebtDate.ToDateTime(TimeOnly.MinValue) - current.ToDateTime(TimeOnly.MinValue);
+            return days.Days;
+        }
 
 
     /* дополнительные методы для получения только открытых долгов, удаления закрытых и т. д. */

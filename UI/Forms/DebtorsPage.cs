@@ -587,10 +587,11 @@ namespace LibraryApp.UI.Forms
         private int CalculateDays()
         {
             var refDate = _dtReturn.Format == DateTimePickerFormat.Long
-                          ? _dtReturn.Value.Date
-                          : DateTime.Today;
-            return Math.Abs((refDate - _dtDebt.Value.Date).Days);
+                        ? _dtReturn.Value.Date
+                        : DateTime.Today;
+            return (_dtDebt.Value.Date - refDate).Days;
         }
+
 
         private static Label CreateLabel(string text, int x, int y) => new()
         {
