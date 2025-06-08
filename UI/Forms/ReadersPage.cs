@@ -60,6 +60,7 @@ public sealed class ReadersPage : TablePageBase
         Controls.Add(hint);
 
         _grid = CreateGrid(hint.Bottom + 5, _bs);
+        _grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
         _grid.ColumnHeaderMouseClick += async (s, e) =>
         {
             var col = _grid.Columns[e.ColumnIndex].DataPropertyName;
@@ -99,8 +100,8 @@ public sealed class ReadersPage : TablePageBase
             btnAdd.Top = ClientSize.Height - btnAdd.Height - margin;
             btnEdit.Top = btnAdd.Top;
             btnDel.Top = btnAdd.Top;
-
             _grid.Height = btnAdd.Top - _grid.Top - 10;
+            _grid.Width = ClientSize.Width - 40;
         }
     }
 
@@ -176,15 +177,15 @@ internal sealed class ReaderDialog : Form
         Controls.AddRange(new Control[]
         {
             new Label { Text = "ФИО", AutoSize = true, Left = 20, Top = y },
-            tName.At(150, y - 3, 240),
+            tName.At(180, y - 3, 220),
             new Label { Text = "E-mail", AutoSize = true, Left = 20, Top = y += 35 },
-            tEmail.At(150, y - 3, 240),
+            tEmail.At(180, y - 3, 220),
             new Label { Text = "Телефон", AutoSize = true, Left = 20, Top = y += 35 },
-            tPhone.At(150, y - 3, 240),
+            tPhone.At(180, y - 3, 220),
             new Label { Text = "Дата регистрации", AutoSize = true, Left = 20, Top = y += 35 },
-            dpReg.At(150, y - 3),
+            dpReg.At(180, y - 3),
             new Label { Text = "Окончание", AutoSize = true, Left = 20, Top = y += 35 },
-            dpEnd.At(150, y - 3)
+            dpEnd.At(180, y - 3)
         });
 
         var ok = new Button

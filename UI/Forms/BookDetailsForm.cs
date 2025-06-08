@@ -96,6 +96,50 @@ public sealed class BookDetailForm : Form
         };
         btnHistory.Click += (_,__) => ShowTransactions();
         Controls.Add(btnHistory);
+
+        var btnEdit = new Button
+        {
+            Text = "Обновить",
+            Left = btnHistory.Right + 10,
+            Top = btnHistory.Top,
+            Width = 110,
+            Height = 36,
+            BackColor = Color.FromArgb(98,0,238),
+            ForeColor = Color.White,
+            FlatStyle = FlatStyle.Flat
+        };
+        btnEdit.Click += async (_,__) =>
+        {
+            using var dlg = new BookEditDialog(_books, _book);
+            if (dlg.ShowDialog(this) == DialogResult.OK)
+            {
+                var fresh = await _books.GetByIdAsync(_book.BookId);
+                if (fresh is not null) _book = fresh;
+                Controls.Clear();
+                BuildUI();
+            }
+        };
+        Controls.Add(btnEdit);
+
+        var btnDelete = new Button
+        {
+            Text = "Удалить",
+            Left = btnEdit.Right + 10,
+            Top = btnHistory.Top,
+            Width = 110,
+            Height = 36,
+            BackColor = Color.FromArgb(98,0,238),
+            ForeColor = Color.White,
+            FlatStyle = FlatStyle.Flat
+        };
+        btnDelete.Click += async (_,__) =>
+        {
+            if (MessageBox.Show("Удалить книгу?", "Подтверждение", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+                return;
+            if (await _books.DeleteAsync(_book.BookId))
+                Close();
+        };
+        Controls.Add(btnDelete);
     }
 
     private static Label Make(Control parent,string t,int sz,FontStyle fs,ref int y,Color? c=null)
@@ -170,5 +214,87 @@ internal sealed class TransactionsDialog : Form
             var list = await service.GetForBookAsync(book.BookId);
             grid.DataSource = list.Select(t => new { t.InventoryTransactionId, t.Date, t.Amount, Location = t.Location!.LocationName }).ToList();
         };
+    }
+}
+
+internal sealed class BookEditDialog : Form
+{
+    private readonly BookService _books;
+    private readonly Book _book;
+    private readonly TextBox tTitle = new();
+    private readonly TextBox tIsbn = new();
+    private readonly NumericUpDown numYear = new() { Minimum = 0, Maximum = DateTime.Now.Year };
+    private readonly NumericUpDown numPages = new() { Minimum = 0, Maximum = 10000 };
+    private readonly TextBox tDesc = new() { Multiline = true, Height = 80 };
+
+    public BookEditDialog(BookService books, Book book)
+    {
+        _books = books;
+        _book = book;
+
+        Text = "Редактирование";
+        Size = new Size(500, 400);
+        StartPosition = FormStartPosition.CenterParent;
+        BackColor = Color.FromArgb(40, 40, 46);
+        ForeColor = Color.Gainsboro;
+        Font = new Font("Segoe UI", 10);
+
+        int y = 20;
+        Controls.Add(new Label { Text = "Название", AutoSize = true, Left = 20, Top = y });
+        tTitle.At(150, y - 3, 320); Controls.Add(tTitle);
+
+        Controls.Add(new Label { Text = "ISBN", AutoSize = true, Left = 20, Top = y += 35 });
+        tIsbn.At(150, y - 3, 200); Controls.Add(tIsbn);
+
+        Controls.Add(new Label { Text = "Год", AutoSize = true, Left = 20, Top = y += 35 });
+        numYear.At(150, y - 3); Controls.Add(numYear);
+
+        Controls.Add(new Label { Text = "Страниц", AutoSize = true, Left = 20, Top = y += 35 });
+        numPages.At(150, y - 3); Controls.Add(numPages);
+
+        Controls.Add(new Label { Text = "Описание", AutoSize = true, Left = 20, Top = y += 35 });
+        tDesc.At(150, y - 3, 320); Controls.Add(tDesc);
+
+        var ok = new Button
+        {
+            Text = "Сохранить",
+            DialogResult = DialogResult.OK,
+            Left = Width / 2 - 70,
+            Top = 310,
+            Width = 140,
+            Height = 45,
+            BackColor = Color.FromArgb(98, 0, 238),
+            ForeColor = Color.White,
+            FlatStyle = FlatStyle.Flat
+        };
+        Controls.Add(ok);
+
+        Load += (_, __) =>
+        {
+            tTitle.Text = _book.Title;
+            tIsbn.Text = _book.ISBN;
+            if (_book.PublishYear is int yv) numYear.Value = yv;
+            if (_book.Pages is int p) numPages.Value = p;
+            tDesc.Text = _book.Description ?? string.Empty;
+        };
+
+        ok.Click += async (_, __) => await SaveAsync();
+    }
+
+    private async Task SaveAsync()
+    {
+        if (string.IsNullOrWhiteSpace(tTitle.Text) || string.IsNullOrWhiteSpace(tIsbn.Text))
+        {
+            MessageBox.Show("Название и ISBN обязательны");
+            DialogResult = DialogResult.None;
+            return;
+        }
+
+        _book.Title = tTitle.Text;
+        _book.ISBN = tIsbn.Text;
+        _book.PublishYear = (int)numYear.Value;
+        _book.Pages = (int)numPages.Value;
+        _book.Description = tDesc.Text;
+        await _books.UpdateAsync(_book);
     }
 }

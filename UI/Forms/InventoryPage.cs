@@ -26,15 +26,24 @@ namespace LibraryApp.UI.Forms
         private readonly LocationService                 _locations;
         private readonly InventoryTransactionService      _transactions;
         private readonly IDbContextFactory<LibraryContext> _db;
+        private readonly PublisherService                _publishers;
+        private readonly GenreService                   _genres;
+        private readonly LanguageCodeService            _languages;
 
         public InventoryPage(
             LocationService locations,
             InventoryTransactionService transactions,
-            IDbContextFactory<LibraryContext> db)
+            IDbContextFactory<LibraryContext> db,
+            PublisherService publishers,
+            GenreService genres,
+            LanguageCodeService languages)
         {
             _locations   = locations;
             _transactions = transactions;
             _db           = db;
+            _publishers   = publishers;
+            _genres       = genres;
+            _languages    = languages;
             BuildUI();
         }
 
@@ -78,6 +87,7 @@ namespace LibraryApp.UI.Forms
 
             _gridLoc = CreateGrid(hintLoc.Bottom + 5, _bsLocations);
             _gridLoc.Width = 520;
+            _gridLoc.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
             _gridLoc.ColumnHeaderMouseClick += async (s, e)
                 => await LoadLocationsAsync(_gridLoc.Columns[e.ColumnIndex].DataPropertyName);
             Controls.Add(_gridLoc);
@@ -142,13 +152,14 @@ namespace LibraryApp.UI.Forms
             _gridTrans = CreateGrid(hintTr.Bottom + 5, _bsTrans);
             _gridTrans.Left = offsetLeft;
             _gridTrans.Width = 520;
+            _gridTrans.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
             _gridTrans.ColumnHeaderMouseClick += async (s, e)
                 => await LoadTransactionsAsync(_gridTrans.Columns[e.ColumnIndex].DataPropertyName);
             Controls.Add(_gridTrans);
 
             var btnAddTr = MakeButton("Создать", _gridTrans.Left, _gridTrans.Bottom + 10, async (_, __) =>
             {
-                using var page = new TransactionAddPage(_transactions, _locations, _db);
+                using var page = new TransactionAddPage(_transactions, _locations, _db, _publishers, _genres, _languages);
                 if (page.ShowDialog(this) == DialogResult.OK)
                     await LoadTransactionsAsync();
             });
@@ -370,6 +381,9 @@ namespace LibraryApp.UI.Forms
         private readonly InventoryTransactionService _transactions;
         private readonly LocationService             _locations;
         private readonly IDbContextFactory<LibraryContext> _db;
+        private readonly PublisherService            _publishers;
+        private readonly GenreService               _genres;
+        private readonly LanguageCodeService        _languages;
 
         private readonly ComboBox      cbTo     = new() { DropDownStyle = ComboBoxStyle.DropDownList };
         private readonly ComboBox      cbFrom   = new() { DropDownStyle = ComboBoxStyle.DropDownList };
@@ -381,29 +395,35 @@ namespace LibraryApp.UI.Forms
         private readonly TextBox       tIsbn   = new();
         private readonly TextBox       tTitle  = new();
         private readonly NumericUpDown tYear   = new() { Minimum = 0, Maximum = DateTime.Now.Year, Value = DateTime.Now.Year };
-        private readonly TextBox       tPublisher = new();
-        private readonly TextBox       tLanguage  = new();
+        private readonly ComboBox      cbPublisher = new() { DropDownStyle = ComboBoxStyle.DropDownList };
+        private readonly ComboBox      cbLanguage  = new() { DropDownStyle = ComboBoxStyle.DropDownList };
         private readonly TextBox       tDescription = new() { Multiline = true, Height = 60, ScrollBars = ScrollBars.Vertical };
         private readonly NumericUpDown tPages   = new() { Minimum = 1, Maximum = 10000 };
-        private readonly TextBox       tGenre   = new();
+        private readonly ComboBox      cbGenre   = new() { DropDownStyle = ComboBoxStyle.DropDownList };
         private readonly TextBox       tCover   = new() { ReadOnly = true, BackColor = SystemColors.Window };
         private readonly Button        btnBrowse = new() { Text = "Файл…", Height = 30 };
 
         public TransactionAddPage(
             InventoryTransactionService transactions,
             LocationService locations,
-            IDbContextFactory<LibraryContext> db)
+            IDbContextFactory<LibraryContext> db,
+            PublisherService publishers,
+            GenreService genres,
+            LanguageCodeService languages)
         {
             _transactions = transactions;
             _locations    = locations;
             _db           = db;
+            _publishers   = publishers;
+            _genres       = genres;
+            _languages    = languages;
             BuildUI();
         }
 
         private void BuildUI()
         {
             Text          = "Новая транзакция";
-            Size          = new Size(1000, 700);
+            Size          = new Size(1100, 760);
             StartPosition = FormStartPosition.CenterParent;
             BackColor     = Color.FromArgb(24, 24, 28);
             ForeColor     = Color.Gainsboro;
@@ -452,13 +472,13 @@ namespace LibraryApp.UI.Forms
                 tIsbn.At(120, y2-3, 320),
 
                 new Label{Text="Издатель", AutoSize=true, Left=0, Top=y2+=35},
-                tPublisher.At(120, y2-3, 320),
+                cbPublisher.At(120, y2-3, 320),
 
                 new Label{Text="Год", AutoSize=true, Left=0, Top=y2+=35},
                 tYear.At(120, y2-3, 120),
 
                 new Label{Text="Язык", AutoSize=true, Left=0, Top=y2+=35},
-                tLanguage.At(120, y2-3, 200),
+                cbLanguage.At(120, y2-3, 200),
 
                 new Label{Text="Название", AutoSize=true, Left=0, Top=y2+=35},
                 tTitle.At(120, y2-3, 320),
@@ -474,7 +494,7 @@ namespace LibraryApp.UI.Forms
                 btnBrowse.At(330, y2-4, 80),
 
                 new Label{Text="Жанр", AutoSize=true, Left=0, Top=y2+=35},
-                tGenre.At(120, y2-3, 320)
+                cbGenre.At(120, y2-3, 320)
             });
             Controls.Add(bookPanel);
 
@@ -483,7 +503,11 @@ namespace LibraryApp.UI.Forms
 
             btnBrowse.Click += ChooseCover;
 
-            Shown += async (_, __) => await LoadLocationsAsync();
+            Shown += async (_, __) =>
+            {
+                await LoadLocationsAsync();
+                await LoadLookupDataAsync();
+            };
 
             var btnOk = new Button
             {
@@ -508,6 +532,18 @@ namespace LibraryApp.UI.Forms
             cbTo.DisplayMember    = nameof(ModelLocation.LocationName);
             cbFrom.DataSource     = list.ToList();
             cbFrom.DisplayMember  = nameof(ModelLocation.LocationName);
+        }
+
+        private async Task LoadLookupDataAsync()
+        {
+            cbPublisher.DataSource = (await _publishers.GetAllAsync()).ToList();
+            cbPublisher.DisplayMember = nameof(Publisher.Name);
+
+            cbLanguage.DataSource = (await _languages.GetAllAsync()).ToList();
+            cbLanguage.DisplayMember = nameof(LanguageCode.Code);
+
+            cbGenre.DataSource = (await _genres.GetAllAsync()).ToList();
+            cbGenre.DisplayMember = nameof(Genre.Name);
         }
 
         private void ChooseCover(object? sender, EventArgs e)
@@ -541,8 +577,12 @@ namespace LibraryApp.UI.Forms
                     PublishYear = (int)tYear.Value,
                     Description = tDescription.Text,
                     Pages       = (int)tPages.Value,
-                    CoverUrl    = "no_cover.png"
+                    CoverUrl    = "no_cover.png",
+                    PublisherId = cbPublisher.SelectedItem is Publisher p ? p.PublisherId : null,
+                    LangId      = cbLanguage.SelectedItem is LanguageCode l ? l.LangId : 0,
                 };
+                if (cbGenre.SelectedItem is Genre g)
+                    book.Genres.Add(new GenreBook { GenreId = g.GenreId });
                 await using var db = await _db.CreateDbContextAsync();
                 db.Books.Add(book);
                 await db.SaveChangesAsync();
