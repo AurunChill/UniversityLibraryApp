@@ -23,7 +23,7 @@ namespace LibraryApp.UI.Forms
         private ToolStripDropDown? _langDropDown;
         private CheckedListBox? _langList;
         private Button? _clearButton;
-        private readonly List<long> _selectedGenres = new();
+        private readonly List<long?> _selectedGenres = new();
         private readonly List<long> _selectedLangs = new();
         private bool _sortByTitleAscending = true;
 
@@ -105,13 +105,12 @@ namespace LibraryApp.UI.Forms
 
             foreach (string navPage in navPages)
             {
-                bool isSelected = navPage == "Инвентарь";
                 var lbl = new Label
                 {
                     Text = navPage,
                     AutoSize = true,
-                    Font = new Font("Segoe UI", 11, isSelected ? FontStyle.Bold : FontStyle.Regular),
-                    ForeColor = isSelected ? accent : Color.Gainsboro,
+                    Font = new Font("Segoe UI", 11, FontStyle.Regular),
+                    ForeColor = Color.Gainsboro,
                     Cursor = Cursors.Hand
                 };
 
@@ -331,6 +330,7 @@ namespace LibraryApp.UI.Forms
             if (_genreDropDown == null)
             {
                 _genreList = new CheckedListBox { Dock = DockStyle.Fill, CheckOnClick = true, BackColor = Color.FromArgb(55,55,60), ForeColor = Color.White };
+                _genreList.DisplayMember = nameof(Genre.Name);
                 var host = new ToolStripControlHost(_genreList) { AutoSize = false, Size = new Size(200, 200) };
                 _genreDropDown = new ToolStripDropDown();
                 _genreDropDown.Items.Add(host);
@@ -351,6 +351,7 @@ namespace LibraryApp.UI.Forms
             if (_langDropDown == null)
             {
                 _langList = new CheckedListBox { Dock = DockStyle.Fill, CheckOnClick = true, BackColor = Color.FromArgb(55,55,60), ForeColor = Color.White };
+                _langList.DisplayMember = nameof(LanguageCode.Code);
                 var host = new ToolStripControlHost(_langList) { AutoSize = false, Size = new Size(200, 200) };
                 _langDropDown = new ToolStripDropDown();
                 _langDropDown.Items.Add(host);
