@@ -69,7 +69,7 @@
 ## 🛠️ Требования
 
 - **.NET 6.0 (или выше)** – Desktop Framework (WinForms)  
-- **SQL Server** или другая реляционная СУБД, поддерживаемая ADO/Entity Framework (Core) — если используется EF  
+- **SQLite** (файл базы создаётся автоматически в папке `AppData`)
 - **Visual Studio 2022+** (рекомендуется) или другой IDE для C# с поддержкой WinForms  
 - **Доступ в файловую систему** для хранения обложек в папке `AppData/Media/Covers`  
 
@@ -82,12 +82,10 @@
    git clone https://github.com/yourusername/LibraryApp.git
    cd LibraryApp
    ```
-2. **Настроить строку подключения к базе** (в `appsettings.json` или `App.config`, в зависимости от используемой технологии доступа к данным). Пример для SQL Server LocalDB:
+2. **Настроить строку подключения к базе** (при необходимости). По умолчанию используется SQLite-файл `AppData/library.db`:
    ```xml
    <connectionStrings>
-       <add name="LibraryDb"
-            connectionString="Server=(localdb)\mssqllocaldb;Database=LibraryDb;Trusted_Connection=True;"
-            providerName="System.Data.SqlClient" />
+       <add name="LibraryDb" connectionString="Data Source=AppData/library.db" providerName="Microsoft.Data.Sqlite" />
    </connectionStrings>
    ```
 3. **Создать и инициализировать базу данных**  
@@ -107,11 +105,10 @@
 ```
 LibraryApp/
 ├─ LibraryApp.UI/              # Приложение WinForms
-│  ├─ Forms/                    # Все формы (ReaderTicketsPage, DebtorsPage, SuppliesPage, BookDetailForm, и т.д.)
-│  │   ├─ MainForm.cs           # Главная форма (если есть)
-│  │   ├─ ReaderTicketsPage.cs
-│  │   ├─ DebtorsPage.cs
-│  │   ├─ SuppliesPage.cs
+│  ├─ Forms/                    # Все формы (DebtsPage, InventoryPage, BookDetailForm, и т.д.)
+│  │   ├─ MainForm.cs           # Главная форма
+│  │   ├─ DebtsPage.cs
+│  │   ├─ InventoryPage.cs
 │  │   ├─ BookDetailForm.cs
 │  │   ├─ BookEditDialog.cs
 │  │   └─ ... 
@@ -238,12 +235,10 @@ LibraryApp/
    ```
 4. Если доступ к данным реализован через ADO.NET, выполните SQL-скрипт создания таблиц вручную из папки `LibraryApp.Data/Scripts`.
 
-**Пример строки подключения (SQL Server LocalDB):**
+**Пример строки подключения (SQLite):**
 ```xml
 <connectionStrings>
-  <add name="LibraryDb"
-       connectionString="Server=(localdb)\mssqllocaldb;Database=LibraryDb;Trusted_Connection=True;"
-       providerName="System.Data.SqlClient" />
+  <add name="LibraryDb" connectionString="Data Source=AppData/library.db" providerName="Microsoft.Data.Sqlite" />
 </connectionStrings>
 ```
 

@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using LibraryApp.Data;
-using LibraryApp.Data.Models;
+using LibraryApp.Data.Services;
 using LibraryApp.UI.Forms;
 using Microsoft.EntityFrameworkCore;
 
@@ -22,7 +22,23 @@ internal static class Program
         builder.Services.AddDbContextFactory<LibraryContext>(opt =>
             opt.UseSqlite($"Data Source={dbPath}"));
 
+        builder.Services.AddScoped<BookService>();
+        builder.Services.AddScoped<InventoryTransactionService>();
+        builder.Services.AddScoped<DebtService>();
+        builder.Services.AddScoped<ReaderService>();
+        builder.Services.AddScoped<ReaderTicketService>();
+        builder.Services.AddScoped<AuthorService>();
+        builder.Services.AddScoped<GenreService>();
+        builder.Services.AddScoped<PublisherService>();
+        builder.Services.AddScoped<LanguageCodeService>();
+        builder.Services.AddScoped<LocationService>();
+
+        builder.Services.AddScoped<InventoryPage>();
+
         builder.Services.AddScoped<MainForm>();
+        builder.Services.AddScoped<DebtsPage>();
+        builder.Services.AddScoped<ReadersPage>();
+        builder.Services.AddScoped<BookDetailForm>();
         return builder.Build();
     }
 
@@ -32,13 +48,6 @@ internal static class Program
         ApplicationConfiguration.Initialize();
 
         using IHost host = CreateHost(args);
-
-        // даём Books доступ к той же фабрике, что зарегистрирована в DI
-        var factory = host.Services.GetRequiredService<IDbContextFactory<LibraryContext>>();
-        Books.Init(factory);
-        Supplies.Factory  = factory;
-        ReaderTickets.Init(factory);
-        Debtors.Init(factory);
 
         DatabaseInitializer.EnsureCreated(
             args.Length > 0 && args[0] == "--test" ? "library_test.db" : "library.db");
