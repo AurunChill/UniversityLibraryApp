@@ -2,14 +2,11 @@ using Microsoft.Data.Sqlite;
 
 namespace LibraryApp.Data
 {
-    /// <summary>Создаёт файл SQLite и все таблицы, если их нет.</summary>
     public static class DatabaseInitializer
     {
-        /// <summary>Запуск при старте приложения.</summary>
         public static void EnsureCreated(string dbName = "library.db")
         {
             string DbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "AppData", dbName);
-            Console.WriteLine(DbPath);
             Directory.CreateDirectory(Path.GetDirectoryName(DbPath)!);
 
             var connectionString = $"Data Source={DbPath};Cache=Shared";
@@ -26,61 +23,78 @@ namespace LibraryApp.Data
             tx.Commit();
         }
 
-        // --- SQL DDL -------------------------------
-
         private static readonly string[] CreateTableScripts =
         {
-            // Books
-            @"CREATE TABLE IF NOT EXISTS Books (
-                book_id      INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL UNIQUE,
-                ISBN         TEXT    NOT NULL UNIQUE,
-                language     TEXT    NOT NULL,
-                location     TEXT    NOT NULL,
-                title        TEXT    NOT NULL,
-                author       TEXT    NOT NULL,
-                genre        TEXT    NOT NULL,
-                publish_year INTEGER NOT NULL CHECK(publish_year > 0),
-                publisher    TEXT    NOT NULL,
-                description  TEXT,
-                cover_url    TEXT    NOT NULL,
-                pages        INTEGER NOT NULL CHECK(pages > 0),
-                amount       INTEGER NOT NULL DEFAULT 1 CHECK(amount >= 0)
-            );",
-
-            // Supply
-            @"CREATE TABLE IF NOT EXISTS Supply (
-                supply_id      INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL UNIQUE,
-                book_id        INTEGER NOT NULL REFERENCES Books(book_id) ON DELETE CASCADE,
-                date           TEXT    NOT NULL,              -- ISO yyyy-MM-dd
-                operation_type TEXT    NOT NULL CHECK(operation_type IN ('приход','списание','долг')),
-                amount         INTEGER NOT NULL
-            );",
-
-            // ReaderTicket
+            @"CREATE TABLE IF NOT EXISTS Publisher (
+  publisher_id   INTEGER PRIMARY KEY AUTOINCREMENT,
+  name           TEXT    NOT NULL UNIQUE
+);",
+            @"CREATE TABLE IF NOT EXISTS LanguageCode (
+  lang_id        INTEGER PRIMARY KEY AUTOINCREMENT,
+  code           TEXT    NOT NULL UNIQUE
+);",
+            @"CREATE TABLE IF NOT EXISTS Genre (
+  genre_id       INTEGER PRIMARY KEY AUTOINCREMENT,
+  name           TEXT    NOT NULL UNIQUE
+);",
+            @"CREATE TABLE IF NOT EXISTS Author (
+  author_id      INTEGER PRIMARY KEY AUTOINCREMENT,
+  name           TEXT    NOT NULL UNIQUE
+);",
+            @"CREATE TABLE IF NOT EXISTS Book (
+  book_id        INTEGER PRIMARY KEY AUTOINCREMENT,
+  ISBN           TEXT    NOT NULL UNIQUE,
+  publisher_id   INTEGER REFERENCES Publisher(publisher_id) ON DELETE SET NULL,
+  publish_year   INTEGER,
+  lang_id        INTEGER NOT NULL REFERENCES LanguageCode(lang_id) ON DELETE RESTRICT,
+  title          TEXT    NOT NULL,
+  description    TEXT,
+  pages          INTEGER,
+  cover_url      TEXT
+);",
+            @"CREATE TABLE IF NOT EXISTS Location (
+  location_id    INTEGER PRIMARY KEY AUTOINCREMENT,
+  location_name  TEXT    NOT NULL UNIQUE,
+  amount         INTEGER NOT NULL DEFAULT 0
+);",
+            @"CREATE TABLE IF NOT EXISTS InventoryTransactions (
+  inv_trans_id     INTEGER PRIMARY KEY AUTOINCREMENT,
+  book_id          INTEGER NOT NULL REFERENCES Book(book_id) ON DELETE CASCADE,
+  location_id      INTEGER NOT NULL REFERENCES Location(location_id) ON DELETE CASCADE,
+  prev_location_id INTEGER        REFERENCES Location(location_id) ON DELETE CASCADE,
+  date             TEXT    NOT NULL,
+  amount           INTEGER NOT NULL
+);",
+            @"CREATE TABLE IF NOT EXISTS GenreBook (
+  genre_book_id   INTEGER PRIMARY KEY AUTOINCREMENT,
+  genre_id        INTEGER REFERENCES Genre(genre_id) ON DELETE SET NULL,
+  book_id         INTEGER NOT NULL REFERENCES Book(book_id) ON DELETE CASCADE,
+  UNIQUE(genre_id, book_id)
+);",
+            @"CREATE TABLE IF NOT EXISTS AuthorBook (
+  author_book_id  INTEGER PRIMARY KEY AUTOINCREMENT,
+  author_id       INTEGER REFERENCES Author(author_id) ON DELETE SET NULL,
+  book_id         INTEGER NOT NULL REFERENCES Book(book_id) ON DELETE CASCADE,
+  UNIQUE(author_id, book_id)
+);",
+            @"CREATE TABLE IF NOT EXISTS Reader (
+  reader_id   INTEGER PRIMARY KEY AUTOINCREMENT,
+  full_name   TEXT    NOT NULL,
+  email       TEXT    NOT NULL UNIQUE,
+  phone       TEXT    UNIQUE
+);",
             @"CREATE TABLE IF NOT EXISTS ReaderTicket (
-                reader_ticket_id  INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL UNIQUE,
-                full_name         TEXT    NOT NULL,
-                email             TEXT    NOT NULL UNIQUE,
-                phone_number      TEXT    NOT NULL,
-                extra_phone_number TEXT
-            );",
-
-            // Debtor
-            @"CREATE TABLE IF NOT EXISTS Debtor (
-                debtor_id        INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL UNIQUE,
-                reader_ticket_id INTEGER NOT NULL REFERENCES ReaderTicket(reader_ticket_id) ON DELETE CASCADE,
-                book_id          INTEGER NOT NULL REFERENCES Books(book_id) ON DELETE CASCADE,
-                get_date         TEXT    NOT NULL,
-                return_date      TEXT,
-                status           TEXT    NOT NULL DEFAULT 'в срок'
-                                 CHECK(status IN ('в срок',
-                                                   'просрочено возвращено без оплаты',
-                                                   'утеряно',
-                                                   'просрочено возвращено с оплатой')),
-                debt_date        TEXT    NOT NULL,
-                days_until_debt  INTEGER NOT NULL CHECK(days_until_debt >= 0),
-                late_penalty     REAL    NOT NULL DEFAULT 0.0 CHECK(late_penalty >= 0)
-            );"
+  reader_id         INTEGER PRIMARY KEY REFERENCES Reader(reader_id) ON DELETE CASCADE,
+  registration_date TEXT    NOT NULL,
+  end_time          TEXT
+);",
+            @"CREATE TABLE IF NOT EXISTS Debts (
+  debt_id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  book_id            INTEGER NOT NULL REFERENCES Book(book_id) ON DELETE CASCADE,
+  reader_ticket_id   INTEGER NOT NULL REFERENCES ReaderTicket(reader_id) ON DELETE CASCADE,
+  start_time         TEXT    NOT NULL,
+  end_time           TEXT
+);"
         };
     }
 }

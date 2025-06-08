@@ -5,6 +5,8 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using LibraryApp.Data;
 using LibraryApp.Data.Models;
+using LibraryApp.Data.Services;
+using LibraryApp.UI.Helpers;
 
 namespace LibraryApp.UI.Forms
 {
@@ -15,7 +17,7 @@ namespace LibraryApp.UI.Forms
     /// – Сортировка по клику на заголовок колонки.
     /// – Добавление и удаление билетов.
     /// </summary>
-    public sealed class ReaderTicketsPage : Form
+    public sealed class ReaderTicketsPage : TablePageBase
     {
         // ───────── Поля ─────────
 
@@ -24,10 +26,15 @@ namespace LibraryApp.UI.Forms
         private TextBox _txtSearchTickets = null!;
         private string _sortColumn = nameof(ReaderTicket.ReaderTicketId);
         private SortOrder _sortOrder = SortOrder.Ascending;
+        private readonly ReaderTicketService _tickets;
 
         // ───────── Конструктор ─────────
 
-        public ReaderTicketsPage() => BuildUI();
+        public ReaderTicketsPage(ReaderTicketService tickets)
+        {
+            _tickets = tickets;
+            BuildUI();
+        }
 
         // ───────── UI ─────────
 
@@ -52,7 +59,7 @@ namespace LibraryApp.UI.Forms
             Controls.Add(sortHint);
 
             // 4) Таблица (DataGridView) сразу под sortHint
-            _grid = CreateDarkGrid(sortHint.Bottom + 10);
+            _grid = CreateGrid(sortHint.Bottom + 10, _bs);
             _grid.ColumnHeaderMouseClick += Grid_ColumnHeaderMouseClick!;
             Controls.Add(_grid);
 
@@ -176,20 +183,25 @@ namespace LibraryApp.UI.Forms
         /// Создает кнопки «Добавить» и «Удалить», задает их позиции под таблицей,
         /// навешивает обработчики и возвращает их в кортеже.
         /// </summary>
-        private (Button btnAdd, Button btnDel) CreateActionButtons()
+        private (Button btnAdd, Button btnEdit, Button btnDel) CreateActionButtons()
         {
             var btnAdd = MakeButton("Добавить",
                                     left: _grid.Left,
                                     top: _grid.Bottom + 15,
                                     onClick: async (_, __) =>
                                     {
-                                        using var dlg = new ReaderTicketDialog();
+                                        using var dlg = new ReaderTicketDialog(_tickets);
                                         if (dlg.ShowDialog(this) == DialogResult.OK)
                                             await RefreshGridAsync();
                                     });
 
+            var btnEdit = MakeButton("Изменить",
+                                     left: btnAdd.Right + 10,
+                                     top: btnAdd.Top,
+                                     onClick: async (_, __) => await EditTicketAsync());
+
             var btnDel = MakeButton("Удалить",
-                                    left: btnAdd.Right + 10,
+                                    left: btnEdit.Right + 10,
                                     top: btnAdd.Top,
                                     onClick: async (_, __) =>
                                     {
@@ -197,7 +209,7 @@ namespace LibraryApp.UI.Forms
                                             await RefreshGridAsync();
                                     });
 
-            return (btnAdd, btnDel);
+            return (btnAdd, btnEdit, btnDel);
         }
 
         /// <summary>
@@ -232,7 +244,7 @@ namespace LibraryApp.UI.Forms
         /// </summary>
         private async Task RefreshGridAsync()
         {
-            var all = await ReaderTickets.GetAllAsync(null, 0);
+            var all = await _tickets.GetAllAsync(null, 0);
 
             // Фильтрация
             string filter = _txtSearchTickets.Text.Trim().ToLower();
@@ -327,7 +339,7 @@ namespace LibraryApp.UI.Forms
         /// Удаляет выбранный билет:
         /// – Получает ID из текущей строки таблицы;
         /// – Спрашивает подтверждение через MessageBox;
-        /// – Если подтверждено, вызывает ReaderTickets.DeleteAsync(id).
+        /// – Если подтверждено, вызывает _tickets.DeleteAsync(id).
         /// </summary>
         private async Task<bool> DeleteTicketAsync()
         {
@@ -343,7 +355,20 @@ namespace LibraryApp.UI.Forms
             if (res != DialogResult.Yes)
                 return false;
 
-            return await ReaderTickets.DeleteAsync(id);
+            return await _tickets.DeleteAsync(id);
+        }
+
+        private async Task EditTicketAsync()
+        {
+            if (_grid.CurrentRow?.Cells["ReaderTicketId"].Value is not long id)
+                return;
+
+            var entity = await _tickets.GetByIdAsync(id);
+            if (entity is null) return;
+
+            using var dlg = new ReaderTicketDialog(_tickets, entity);
+            if (dlg.ShowDialog(this) == DialogResult.OK)
+                await RefreshGridAsync();
         }
     }
 
@@ -355,10 +380,14 @@ namespace LibraryApp.UI.Forms
         private readonly TextBox tEmail = new();
         private readonly TextBox tPhone = new();
         private readonly TextBox tExtra = new();
+        private readonly ReaderTicketService _tickets;
+        private readonly ReaderTicket? _orig;
 
-        public ReaderTicketDialog()
+        public ReaderTicketDialog(ReaderTicketService tickets, ReaderTicket? existing = null)
         {
-            Text = "Новый билет";
+            _tickets = tickets;
+            _orig = existing;
+            Text = existing is null ? "Новый билет" : "Редактирование";
             Size = new Size(420, 465);
             BackColor = Color.FromArgb(40, 40, 46);
             ForeColor = Color.Gainsboro;
@@ -395,6 +424,14 @@ namespace LibraryApp.UI.Forms
             };
             Controls.Add(ok);
 
+            if (_orig is not null)
+            {
+                tName.Text = _orig.FullName;
+                tEmail.Text = _orig.Email;
+                tPhone.Text = _orig.PhoneNumber;
+                tExtra.Text = _orig.ExtraPhoneNumber;
+            }
+
             ok.Click += async (_, __) =>
             {
                 if (string.IsNullOrWhiteSpace(tName.Text) ||
@@ -405,13 +442,24 @@ namespace LibraryApp.UI.Forms
                     return;
                 }
 
-                await ReaderTickets.AddAsync(new ReaderTicket
+                if (_orig is null)
                 {
-                    FullName = tName.Text,
-                    Email = tEmail.Text,
-                    PhoneNumber = tPhone.Text,
-                    ExtraPhoneNumber = tExtra.Text
-                });
+                    await _tickets.AddAsync(new ReaderTicket
+                    {
+                        FullName = tName.Text,
+                        Email = tEmail.Text,
+                        PhoneNumber = tPhone.Text,
+                        ExtraPhoneNumber = tExtra.Text
+                    });
+                }
+                else
+                {
+                    _orig.FullName = tName.Text;
+                    _orig.Email = tEmail.Text;
+                    _orig.PhoneNumber = tPhone.Text;
+                    _orig.ExtraPhoneNumber = tExtra.Text;
+                    await _tickets.UpdateAsync(_orig);
+                }
             };
         }
 
