@@ -180,7 +180,6 @@ namespace LibraryApp.UI.Forms
                 btnAdd.Top = ClientSize.Height - btnAdd.Height - margin;
                 btnEdit.Top = btnAdd.Top;
                 btnDel.Top = btnAdd.Top;
-
                 btnAddTr.Top  = ClientSize.Height - btnAddTr.Height - margin;
 
                 int tableWidth = (ClientSize.Width - 80) / 2;
@@ -192,7 +191,6 @@ namespace LibraryApp.UI.Forms
                 _searchTrans.Left = _gridTrans.Left + transShift;
                 hintTr.Left      = _gridTrans.Left + transShift;
                 btnAddTr.Left    = _gridTrans.Left + transShift;
-
                 _gridLoc.Height = btnAdd.Top - _gridLoc.Top - 10;
                 _gridTrans.Height = btnAddTr.Top - _gridTrans.Top - 10;
             }
@@ -395,7 +393,6 @@ namespace LibraryApp.UI.Forms
         private readonly PublisherService            _publishers;
         private readonly GenreService               _genres;
         private readonly LanguageCodeService        _languages;
-
         private readonly ComboBox      cbTo     = new()
         {
             DropDownStyle     = ComboBoxStyle.DropDownList,
@@ -505,7 +502,6 @@ namespace LibraryApp.UI.Forms
 
                 new Label{Text="Языки", AutoSize=true, Left=0, Top=y2+=35},
                 clLanguages.At(120, y2-3, 200),
-
                 new Label{Text="Название", AutoSize=true, Left=0, Top=y2+=35},
                 tTitle.At(120, y2-3, 320),
 
@@ -518,7 +514,6 @@ namespace LibraryApp.UI.Forms
                 new Label{Text="Обложка", AutoSize=true, Left=0, Top=y2+=35},
                 tCover.At(120, y2-3, 200),
                 btnBrowse.At(330, y2-4, 80),
-
                 new Label{Text="Жанры", AutoSize=true, Left=0, Top=y2+=35},
                 clGenres.At(120, y2-3, 320)
             });

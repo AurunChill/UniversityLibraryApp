@@ -36,7 +36,6 @@ internal static class Program
         builder.Services.AddTransient<PublishersPage>();
         builder.Services.AddTransient<GenresPage>();
         builder.Services.AddTransient<LanguagesPage>();
-
         builder.Services.AddScoped<MainForm>();
         builder.Services.AddTransient<DebtsPage>();
         builder.Services.AddTransient<ReadersPage>();
