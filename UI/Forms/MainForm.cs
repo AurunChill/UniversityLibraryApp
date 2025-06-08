@@ -1,19 +1,27 @@
 using System.Drawing.Drawing2D;
 using LibraryApp.Data.Models;
+using LibraryApp.Data.Services;
+using LibraryApp.UI.Helpers;
 
 namespace LibraryApp.UI.Forms
 {
     public sealed class MainForm : Form
     {
         private readonly Rectangle _screenBounds;
+        private readonly IServiceProvider _provider;
+        private readonly BookService _books;
+        private readonly InventoryTransactionService _transactions;
         private FlowLayoutPanel? _cardPanel;
         private Label? _countLabel;
         private TextBox? _search;
         private Button? _sortButton;
         private bool _sortByTitleAscending = true;
 
-        public MainForm()
+        public MainForm(IServiceProvider provider, BookService books, InventoryTransactionService transactions)
         {
+            _provider = provider;
+            _books = books;
+            _transactions = transactions;
             _screenBounds = Screen.PrimaryScreen!.Bounds;
             InitializeComponent();
         }
@@ -79,6 +87,7 @@ namespace LibraryApp.UI.Forms
 
             // По показу формы загружаем карточки
             Shown += async (_, __) => await LoadCardsAsync();
+            Activated += async (_, __) => await LoadCardsAsync(_search!.Text);
         }
 
         /// <summary>
@@ -96,11 +105,11 @@ namespace LibraryApp.UI.Forms
             };
 
             Color accent = Color.FromArgb(98, 0, 238);
-            string[] navPages = { "Главная", "Поставки", "Должники", "Читательские билеты" };
+            string[] navPages = { "Инвентарь", "Долги", "Читатели" };
 
             foreach (string navPage in navPages)
             {
-                bool isSelected = navPage == "Главная";
+                bool isSelected = navPage == "Инвентарь";
                 var lbl = new Label
                 {
                     Text = navPage,
@@ -114,16 +123,12 @@ namespace LibraryApp.UI.Forms
                 {
                     switch (navPage)
                     {
-                        case "Поставки":
-                            using (var f = new SuppliesPage())
+                        case "Долги":
+                            using (var f = _provider.GetRequiredService<DebtsPage>())
                                 f.ShowDialog(this);
                             break;
-                        case "Должники":
-                            using (var f = new DebtorsPage())
-                                f.ShowDialog(this);
-                            break;
-                        case "Читательские билеты":
-                            using (var f = new ReaderTicketsPage())
+                        case "Читатели":
+                            using (var f = _provider.GetRequiredService<ReadersPage>())
                                 f.ShowDialog(this);
                             break;
                     }
@@ -173,7 +178,7 @@ namespace LibraryApp.UI.Forms
                 PlaceholderText = "  Поиск...",
                 Font = new Font("Segoe UI", 14, FontStyle.Regular)
             };
-            RoundCorners(searchBox, 10);
+            searchBox.RoundCorners(10);
 
             // При нажатии Enter — перезагружаем карточки с новым запросом
             searchBox.KeyDown += async (sender, e) =>
@@ -259,8 +264,8 @@ namespace LibraryApp.UI.Forms
             _cardPanel.Controls.Clear();
 
             var books = string.IsNullOrWhiteSpace(query)
-                ? await Books.GetAllAsync(null, 0)
-                : await Books.FullTextAsync(query);
+                ? await _books.GetAllDetailedAsync()
+                : await _books.FullTextAsync(query);
 
             if (_sortButton is not null)
             {
@@ -292,7 +297,7 @@ namespace LibraryApp.UI.Forms
                 Cursor = Cursors.Hand,
                 Tag = book
             };
-            RoundCorners(card, 12);
+            card.RoundCorners(12);
 
             // Путь к изображению обложки
             string imgPath = Path.Combine(
@@ -311,11 +316,12 @@ namespace LibraryApp.UI.Forms
                 Image = File.Exists(imgPath) ? Image.FromFile(imgPath) : null,
                 Tag = book
             };
-            RoundCorners(pic, 12, topOnly: true);
+            pic.RoundCorners(12, topOnly: true);
 
             // Короткое отображение title/author
             string title = book.Title.Length > 15 ? book.Title[..12] + "..." : book.Title;
-            string author = book.Author.Length > 15 ? book.Author[..12] + "..." : book.Author;
+            string authorName = book.Authors?.FirstOrDefault()?.Author?.Name ?? "";
+            string author = authorName.Length > 15 ? authorName[..12] + "..." : authorName;
 
             var textPanel = new Panel
             {
@@ -365,43 +371,10 @@ namespace LibraryApp.UI.Forms
         {
             if (sender is Control c && c.Tag is Book b)
             {
-                using var f = new BookDetailForm(b);
-                f.ShowDialog(this);
+                using var f = new BookDetailForm(b, _books, _transactions);
+                f.Show();
             }
         }
 
         #endregion
 
-        #region Утилиты
-
-        /// <summary>
-        /// Закругляет углы у произвольного Control (по заданному радиусу). Если topOnly=true, 
-        /// то закругляются только верхние два угла.
-        /// </summary>
-        private static void RoundCorners(Control c, int radius, bool topOnly = false)
-        {
-            var path = new GraphicsPath();
-            var rect = c.ClientRectangle;
-            if (topOnly)
-            {
-                path.AddArc(rect.X, rect.Y, radius, radius, 180, 90);
-                path.AddArc(rect.Right - radius, rect.Y, radius, radius, 270, 90);
-                path.AddLine(rect.Right, rect.Y + radius, rect.Right, rect.Bottom);
-                path.AddLine(rect.Right, rect.Bottom, rect.X, rect.Bottom);
-                path.AddLine(rect.X, rect.Bottom, rect.X, rect.Y + radius);
-            }
-            else
-            {
-                path.AddArc(rect.X, rect.Y, radius, radius, 180, 90);
-                path.AddArc(rect.Right - radius, rect.Y, radius, radius, 270, 90);
-                path.AddArc(rect.Right - radius, rect.Bottom - radius, radius, radius, 0, 90);
-                path.AddArc(rect.X, rect.Bottom - radius, radius, radius, 90, 90);
-            }
-
-            path.CloseFigure();
-            c.Region = new Region(path);
-        }
-
-        #endregion
-    }
-}

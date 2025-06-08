@@ -8,19 +8,20 @@ public class LibraryContext : DbContext
     public LibraryContext(DbContextOptions<LibraryContext> options) : base(options) { }
 
     public DbSet<Book> Books => Set<Book>();
-    public DbSet<Supply> Supplies => Set<Supply>();
-    public DbSet<Debtor> Debtors => Set<Debtor>();
+    public DbSet<Publisher> Publishers => Set<Publisher>();
+    public DbSet<LanguageCode> LanguageCodes => Set<LanguageCode>();
+    public DbSet<Genre> Genres => Set<Genre>();
+    public DbSet<Author> Authors => Set<Author>();
+    public DbSet<Location> Locations => Set<Location>();
+    public DbSet<InventoryTransaction> InventoryTransactions => Set<InventoryTransaction>();
+    public DbSet<GenreBook> GenreBooks => Set<GenreBook>();
+    public DbSet<AuthorBook> AuthorBooks => Set<AuthorBook>();
+    public DbSet<Reader> Readers => Set<Reader>();
     public DbSet<ReaderTicket> ReaderTickets => Set<ReaderTicket>();
+    public DbSet<Debt> Debts => Set<Debt>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
-        // Пример: enum-to-string (EF хранит enum как TEXT)
-        b.Entity<Supply>()
-         .Property(s => s.OperationType)
-         .HasConversion<string>();
-
-        b.Entity<Debtor>()
-         .Property(d => d.Status)
-         .HasConversion<string>();
+        // Additional configuration if needed
     }
 }
