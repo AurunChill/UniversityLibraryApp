@@ -28,6 +28,7 @@ public class DebtService : BaseService<Debt>
             .FirstOrDefaultAsync(d => d.DebtId == id);
     }
 
+
     public async Task<IReadOnlyList<Debt>> GetOpenDebtsAsync()
     {
         await using var db = await Factory.CreateDbContextAsync();

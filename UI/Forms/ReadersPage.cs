@@ -84,7 +84,6 @@ public sealed class ReadersPage : TablePageBase
             if (await DeleteAsync()) await LoadAsync();
         });
         Controls.AddRange(new Control[] { btnAdd, btnEdit, btnDel });
-
         Shown += async (_, __) => await LoadAsync();
     }
 

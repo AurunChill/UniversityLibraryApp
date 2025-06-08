@@ -20,6 +20,7 @@ public class InventoryTransactionService : BaseService<InventoryTransaction>
         return await q.ToListAsync();
     }
 
+
     public async Task<IReadOnlyList<InventoryTransaction>> GetForBookAsync(long bookId)
     {
         await using var db = await Factory.CreateDbContextAsync();

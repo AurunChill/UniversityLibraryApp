@@ -32,7 +32,6 @@ internal static class Program
         builder.Services.AddScoped<PublisherService>();
         builder.Services.AddScoped<LanguageCodeService>();
         builder.Services.AddScoped<LocationService>();
-
         builder.Services.AddScoped<InventoryPage>();
 
         builder.Services.AddScoped<MainForm>();

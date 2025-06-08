@@ -26,6 +26,7 @@ public class ReaderTicketService : BaseService<ReaderTicket>
             .FirstOrDefaultAsync(t => t.ReaderId == id);
     }
 
+
     public async Task<IReadOnlyList<ReaderTicket>> FullTextAsync(string q)
     {
         await using var db = await Factory.CreateDbContextAsync();

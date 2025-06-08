@@ -13,6 +13,7 @@ public sealed class DebtsPage : TablePageBase
     private TextBox _search = null!;
     private string _sortColumn = nameof(Debt.DebtId);
     private SortOrder _sortOrder = SortOrder.Ascending;
+
     private readonly DebtService _debts;
     private readonly BookService _books;
     private readonly ReaderTicketService _tickets;
@@ -89,7 +90,6 @@ public sealed class DebtsPage : TablePageBase
             if (await Delete()) await LoadAsync();
         });
         Controls.AddRange(new Control[] { btnAdd, btnEdit, btnDel });
-
         Shown += async (_, __) => await LoadAsync();
     }
 
