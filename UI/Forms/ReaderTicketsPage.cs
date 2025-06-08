@@ -24,15 +24,17 @@ namespace LibraryApp.UI.Forms
         private readonly BindingSource _bs = new();
         private DataGridView _grid = null!;
         private TextBox _txtSearchTickets = null!;
-        private string _sortColumn = nameof(ReaderTicket.ReaderTicketId);
+        private string _sortColumn = nameof(ReaderTicket.ReaderId);
         private SortOrder _sortOrder = SortOrder.Ascending;
         private readonly ReaderTicketService _tickets;
+        private readonly ReaderService _readers;
 
         // ───────── Конструктор ─────────
 
-        public ReaderTicketsPage(ReaderTicketService tickets)
+        public ReaderTicketsPage(ReaderTicketService tickets, ReaderService readers)
         {
             _tickets = tickets;
+            _readers = readers;
             BuildUI();
         }
 
@@ -190,7 +192,7 @@ namespace LibraryApp.UI.Forms
                                     top: _grid.Bottom + 15,
                                     onClick: async (_, __) =>
                                     {
-                                        using var dlg = new ReaderTicketDialog(_tickets);
+                                        using var dlg = new ReaderDialog(_tickets, _readers);
                                         if (dlg.ShowDialog(this) == DialogResult.OK)
                                             await RefreshGridAsync();
                                     });
@@ -252,10 +254,9 @@ namespace LibraryApp.UI.Forms
             {
                 all = all
                     .Where(r =>
-                        (r.FullName?.ToLower().Contains(filter) ?? false)
-                        || (r.Email?.ToLower().Contains(filter) ?? false)
-                        || (r.PhoneNumber?.ToLower().Contains(filter) ?? false)
-                        || (r.ExtraPhoneNumber?.ToLower().Contains(filter) ?? false))
+                        r.Reader!.FullName.ToLower().Contains(filter)
+                        || r.Reader.Email.ToLower().Contains(filter)
+                        || (r.Reader.Phone != null && r.Reader.Phone.ToLower().Contains(filter)))
                     .ToList();
             }
 
@@ -264,34 +265,25 @@ namespace LibraryApp.UI.Forms
             {
                 switch (_sortColumn)
                 {
-                    case nameof(ReaderTicket.ReaderTicketId):
+                    case nameof(ReaderTicket.ReaderId):
                         all = _sortOrder == SortOrder.Ascending
-                            ? all.OrderBy(r => r.ReaderTicketId).ToList()
-                            : all.OrderByDescending(r => r.ReaderTicketId).ToList();
+                            ? all.OrderBy(r => r.ReaderId).ToList()
+                            : all.OrderByDescending(r => r.ReaderId).ToList();
                         break;
 
-                    case nameof(ReaderTicket.FullName):
+                    case nameof(Reader.FullName):
                         all = _sortOrder == SortOrder.Ascending
-                            ? all.OrderBy(r => r.FullName).ToList()
-                            : all.OrderByDescending(r => r.FullName).ToList();
+                            ? all.OrderBy(r => r.Reader!.FullName).ToList()
+                            : all.OrderByDescending(r => r.Reader!.FullName).ToList();
                         break;
 
-                    case nameof(ReaderTicket.Email):
+                    case nameof(Reader.Email):
                         all = _sortOrder == SortOrder.Ascending
-                            ? all.OrderBy(r => r.Email).ToList()
-                            : all.OrderByDescending(r => r.Email).ToList();
+                            ? all.OrderBy(r => r.Reader!.Email).ToList()
+                            : all.OrderByDescending(r => r.Reader!.Email).ToList();
                         break;
 
-                    case nameof(ReaderTicket.PhoneNumber):
-                        all = _sortOrder == SortOrder.Ascending
-                            ? all.OrderBy(r => r.PhoneNumber).ToList()
-                            : all.OrderByDescending(r => r.PhoneNumber).ToList();
-                        break;
-
-                    case nameof(ReaderTicket.ExtraPhoneNumber):
-                        all = _sortOrder == SortOrder.Ascending
-                            ? all.OrderBy(r => r.ExtraPhoneNumber).ToList()
-                            : all.OrderByDescending(r => r.ExtraPhoneNumber).ToList();
+                    default:
                         break;
                 }
             }
@@ -300,11 +292,12 @@ namespace LibraryApp.UI.Forms
             _bs.DataSource = all
                 .Select(r => new
                 {
-                    r.ReaderTicketId,
-                    r.FullName,
-                    r.Email,
-                    r.PhoneNumber,
-                    r.ExtraPhoneNumber
+                    r.ReaderId,
+                    ФИО = r.Reader!.FullName,
+                    Email = r.Reader.Email,
+                    Телефон = r.Reader.Phone,
+                    Дата_регистрации = r.RegistrationDate,
+                    Дата_окончания = r.EndTime
                 })
                 .ToList();
         }
@@ -343,7 +336,7 @@ namespace LibraryApp.UI.Forms
         /// </summary>
         private async Task<bool> DeleteTicketAsync()
         {
-            if (_grid.CurrentRow?.Cells["ReaderTicketId"].Value is not long id)
+            if (_grid.CurrentRow?.Cells["ReaderId"].Value is not long id)
                 return false;
 
             var res = MessageBox.Show(
@@ -360,123 +353,16 @@ namespace LibraryApp.UI.Forms
 
         private async Task EditTicketAsync()
         {
-            if (_grid.CurrentRow?.Cells["ReaderTicketId"].Value is not long id)
+            if (_grid.CurrentRow?.Cells["ReaderId"].Value is not long id)
                 return;
 
             var entity = await _tickets.GetByIdAsync(id);
             if (entity is null) return;
 
-            using var dlg = new ReaderTicketDialog(_tickets, entity);
+            using var dlg = new ReaderDialog(_tickets, _readers, entity);
             if (dlg.ShowDialog(this) == DialogResult.OK)
                 await RefreshGridAsync();
         }
     }
 
-    // ───────── Диалог создания нового читательского билета ─────────
-
-    internal sealed class ReaderTicketDialog : Form
-    {
-        private readonly TextBox tName = new();
-        private readonly TextBox tEmail = new();
-        private readonly TextBox tPhone = new();
-        private readonly TextBox tExtra = new();
-        private readonly ReaderTicketService _tickets;
-        private readonly ReaderTicket? _orig;
-
-        public ReaderTicketDialog(ReaderTicketService tickets, ReaderTicket? existing = null)
-        {
-            _tickets = tickets;
-            _orig = existing;
-            Text = existing is null ? "Новый билет" : "Редактирование";
-            Size = new Size(420, 465);
-            BackColor = Color.FromArgb(40, 40, 46);
-            ForeColor = Color.Gainsboro;
-            Font = new Font("Segoe UI", 10);
-            StartPosition = FormStartPosition.CenterParent;
-
-            int y = 20;
-            Controls.AddRange(new Control[]
-            {
-                CreateLabel("ФИО", 20, y),
-                SetupTextBox(tName, 150, y - 3, 240),
-
-                CreateLabel("E-mail", 20, y += 35),
-                SetupTextBox(tEmail, 150, y - 3, 240),
-
-                CreateLabel("Телефон", 20, y += 35),
-                SetupTextBox(tPhone, 150, y - 3, 240),
-
-                CreateLabel("Доп.тел", 20, y += 35),
-                SetupTextBox(tExtra, 150, y - 3, 240)
-            });
-
-            var ok = new Button
-            {
-                Text = "Сохранить",
-                DialogResult = DialogResult.OK,
-                Left = Width / 2 - 70,
-                Top = 230,
-                Width = 140,
-                Height = 55,
-                BackColor = Color.FromArgb(98, 0, 238),
-                ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat
-            };
-            Controls.Add(ok);
-
-            if (_orig is not null)
-            {
-                tName.Text = _orig.FullName;
-                tEmail.Text = _orig.Email;
-                tPhone.Text = _orig.PhoneNumber;
-                tExtra.Text = _orig.ExtraPhoneNumber;
-            }
-
-            ok.Click += async (_, __) =>
-            {
-                if (string.IsNullOrWhiteSpace(tName.Text) ||
-                    string.IsNullOrWhiteSpace(tEmail.Text))
-                {
-                    MessageBox.Show("ФИО и E-mail обязательны");
-                    DialogResult = DialogResult.None;
-                    return;
-                }
-
-                if (_orig is null)
-                {
-                    await _tickets.AddAsync(new ReaderTicket
-                    {
-                        FullName = tName.Text,
-                        Email = tEmail.Text,
-                        PhoneNumber = tPhone.Text,
-                        ExtraPhoneNumber = tExtra.Text
-                    });
-                }
-                else
-                {
-                    _orig.FullName = tName.Text;
-                    _orig.Email = tEmail.Text;
-                    _orig.PhoneNumber = tPhone.Text;
-                    _orig.ExtraPhoneNumber = tExtra.Text;
-                    await _tickets.UpdateAsync(_orig);
-                }
-            };
-        }
-
-        private static Label CreateLabel(string text, int x, int y) => new()
-        {
-            Text = text,
-            AutoSize = true,
-            Left = x,
-            Top = y
-        };
-
-        private static TextBox SetupTextBox(TextBox tb, int x, int y, int width)
-        {
-            tb.Left = x;
-            tb.Top = y;
-            tb.Width = width;
-            return tb;
-        }
-    }
 }

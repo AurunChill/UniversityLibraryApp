@@ -38,8 +38,8 @@ public class Book
     [Column("cover_url")]
     public string? CoverUrl { get; set; }
 
-    public ICollection<GenreBook>? Genres { get; set; }
-    public ICollection<AuthorBook>? Authors { get; set; }
-    public ICollection<InventoryTransaction>? InventoryTransactions { get; set; }
-    public ICollection<Debt>? Debts { get; set; }
+    public ICollection<GenreBook> Genres { get; set; } = new List<GenreBook>();
+    public ICollection<AuthorBook> Authors { get; set; } = new List<AuthorBook>();
+    public ICollection<InventoryTransaction> InventoryTransactions { get; set; } = new List<InventoryTransaction>();
+    public ICollection<Debt> Debts { get; set; } = new List<Debt>();
 }
