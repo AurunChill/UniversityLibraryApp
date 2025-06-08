@@ -253,7 +253,6 @@ internal sealed class BookEditDialog : Form
 
         Controls.Add(new Label { Text = "Издатель", AutoSize = true, Left = 20, Top = y += 35 });
         cbPublisher.At(150, y - 3, 200); Controls.Add(cbPublisher);
-
         Controls.Add(new Label { Text = "Год", AutoSize = true, Left = 20, Top = y += 35 });
         numYear.At(150, y - 3); Controls.Add(numYear);
 

@@ -108,6 +108,7 @@ public sealed class DebtsPage : TablePageBase
 
             _grid.Height = btnAdd.Top - _grid.Top - 10;
             _grid.Width = ClientSize.Width - 40;
+
         }
     }
 

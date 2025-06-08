@@ -186,7 +186,6 @@ namespace LibraryApp.UI.Forms
                 _gridLoc.Width = tableWidth;
                 _gridTrans.Width = tableWidth;
                 _gridTrans.Left = _gridLoc.Right + 40;
-
                 _gridLoc.Height = btnAdd.Top - _gridLoc.Top - 10;
                 _gridTrans.Height = btnAddTr.Top - _gridTrans.Top - 10;
             }
@@ -484,7 +483,6 @@ namespace LibraryApp.UI.Forms
 
                 new Label{Text="Языки", AutoSize=true, Left=0, Top=y2+=35},
                 clLanguages.At(120, y2-3, 200),
-
                 new Label{Text="Название", AutoSize=true, Left=0, Top=y2+=35},
                 tTitle.At(120, y2-3, 320),
 
@@ -497,7 +495,6 @@ namespace LibraryApp.UI.Forms
                 new Label{Text="Обложка", AutoSize=true, Left=0, Top=y2+=35},
                 tCover.At(120, y2-3, 200),
                 btnBrowse.At(330, y2-4, 80),
-
                 new Label{Text="Жанры", AutoSize=true, Left=0, Top=y2+=35},
                 clGenres.At(120, y2-3, 320)
             });
@@ -597,6 +594,7 @@ namespace LibraryApp.UI.Forms
                 foreach (var item in clGenres.CheckedItems)
                     if (item is Genre g)
                         book.Genres.Add(new GenreBook { GenreId = g.GenreId });
+
                 await using var db = await _db.CreateDbContextAsync();
                 db.Books.Add(book);
                 await db.SaveChangesAsync();

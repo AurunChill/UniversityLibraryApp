@@ -104,7 +104,6 @@ namespace LibraryApp.UI.Forms
 
             Color accent = Color.FromArgb(98, 0, 238);
             string[] navPages = { "Инвентарь", "Долги", "Читатели", "Издатели", "Жанры", "Языки" };
-
             foreach (string navPage in navPages)
             {
                 var lbl = new Label
