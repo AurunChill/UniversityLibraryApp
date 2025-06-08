@@ -12,17 +12,31 @@ namespace LibraryApp.UI.Forms
         private readonly IServiceProvider _provider;
         private readonly BookService _books;
         private readonly InventoryTransactionService _transactions;
+        private readonly GenreService _genres;
+        private readonly LanguageCodeService _languages;
         private FlowLayoutPanel? _cardPanel;
         private Label? _countLabel;
         private TextBox? _search;
-        private Button? _sortButton;
+        private ComboBox? _sortCombo;
+        private ToolStripDropDown? _genreDropDown;
+        private CheckedListBox? _genreList;
+        private ToolStripDropDown? _langDropDown;
+        private CheckedListBox? _langList;
+        private Button? _clearButton;
+        private readonly List<long> _selectedGenres = new();
+        private readonly List<long> _selectedLangs = new();
         private bool _sortByTitleAscending = true;
 
-        public MainForm(IServiceProvider provider, BookService books, InventoryTransactionService transactions)
+        public MainForm(IServiceProvider provider, BookService books,
+            InventoryTransactionService transactions,
+            GenreService genres,
+            LanguageCodeService languages)
         {
             _provider = provider;
             _books = books;
             _transactions = transactions;
+            _genres = genres;
+            _languages = languages;
             _screenBounds = Screen.PrimaryScreen!.Bounds;
             InitializeComponent();
         }
@@ -48,31 +62,11 @@ namespace LibraryApp.UI.Forms
             // Поле поиска
             _search = CreateSearchBox(marginTopStart: mainLabel.Bottom);
 
-            // Статус-панель (отображает количество найденных книг и «Обновить»)
-            var statusPanel = CreateStatusPanel(marginTopStart: _search.Bottom);
+            // Панель фильтров (жанры, языки, сортировка)
+            var filterPanel = CreateFilterRow(marginTopStart: _search.Bottom);
 
-            // Кнопка сортировки
-            _sortButton = new Button
-            {
-                Text = "Сортировать",
-                Width = 130,
-                Height = 32,
-                // После увеличения высоты statusPanel теперь можно поместить кнопку внутри
-                Left = statusPanel.Width - 150,
-                Top = 35,
-                BackColor = Color.FromArgb(98, 0, 238),
-                ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat,
-                Cursor = Cursors.Hand,
-                Anchor = AnchorStyles.Top | AnchorStyles.Right
-            };
-            _sortButton.Click += async (_, __) =>
-            {
-                // Инвертируем направление и перезагружаем карточки
-                _sortByTitleAscending = !_sortByTitleAscending;
-                await LoadCardsAsync(query: _search!.Text);
-            };
-            statusPanel.Controls.Add(_sortButton);
+            // Статус-панель (отображает количество найденных книг и «Обновить»)
+            var statusPanel = CreateStatusPanel(marginTopStart: filterPanel.Bottom);
 
             // Панель карточек с обложками книг
             _cardPanel = CreateCardPanel(margintopStart: statusPanel.Bottom);
@@ -81,6 +75,7 @@ namespace LibraryApp.UI.Forms
             Controls.Add(navigation);
             Controls.Add(mainLabel);
             Controls.Add(_search);
+            Controls.Add(filterPanel);
             Controls.Add(statusPanel);
             Controls.Add(_cardPanel);
 
@@ -196,6 +191,81 @@ namespace LibraryApp.UI.Forms
         }
 
         /// <summary>
+        /// Создаёт панель фильтров: жанр, язык и сортировка.
+        /// </summary>
+        private Panel CreateFilterRow(int marginTopStart = 0)
+        {
+            var panel = new Panel
+            {
+                Top = marginTopStart + 8,
+                Left = _search!.Left,
+                Width = _search.Width,
+                Height = 40,
+                BackColor = Color.Transparent
+            };
+
+            var genreBtn = new Button
+            {
+                Text = "Жанры",
+                Width = 120,
+                Height = 32,
+                Left = 0,
+                Top = 4,
+                BackColor = Color.FromArgb(55,55,60),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat
+            };
+            genreBtn.Click += async (_,__) => await ShowGenreDropDown(genreBtn);
+
+            var langBtn = new Button
+            {
+                Text = "Языки",
+                Width = 120,
+                Height = 32,
+                Left = genreBtn.Right + 10,
+                Top = 4,
+                BackColor = Color.FromArgb(55,55,60),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat
+            };
+            langBtn.Click += async (_,__) => await ShowLangDropDown(langBtn);
+
+            _sortCombo = new ComboBox
+            {
+                Left = langBtn.Right + 10,
+                Top = 4,
+                Width = 140,
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                BackColor = Color.FromArgb(55,55,60),
+                ForeColor = Color.White,
+            };
+            _sortCombo.Items.AddRange(new[] { "От A до Я", "От Я до А", "Дата добавления" });
+            _sortCombo.SelectedIndex = 0;
+            _sortCombo.SelectedIndexChanged += async (_,__) =>
+                await LoadCardsAsync(_search!.Text);
+
+            _clearButton = new Button
+            {
+                Text = "Очистить",
+                Width = 100,
+                Height = 32,
+                Left = _sortCombo.Right + 10,
+                Top = 4,
+                BackColor = Color.FromArgb(98,0,238),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat
+            };
+            _clearButton.Click += async (_,__) =>
+            {
+                ClearFilters();
+                await LoadCardsAsync(_search!.Text);
+            };
+
+            panel.Controls.AddRange(new Control[] { genreBtn, langBtn, _sortCombo, _clearButton });
+            return panel;
+        }
+
+        /// <summary>
         /// Создаёт панель, в которой отображается число найденных книг, ссылка "Обновить список"
         /// и теперь место для кнопки сортировки.
         /// </summary>
@@ -256,6 +326,77 @@ namespace LibraryApp.UI.Forms
             return cards;
         }
 
+        private async Task ShowGenreDropDown(Button anchor)
+        {
+            if (_genreDropDown == null)
+            {
+                _genreList = new CheckedListBox { Dock = DockStyle.Fill, CheckOnClick = true, BackColor = Color.FromArgb(55,55,60), ForeColor = Color.White };
+                var host = new ToolStripControlHost(_genreList) { AutoSize = false, Size = new Size(200, 200) };
+                _genreDropDown = new ToolStripDropDown();
+                _genreDropDown.Items.Add(host);
+                _genreList.ItemCheck += async (_,__) =>
+                {
+                    await Task.Delay(10);
+                    UpdateSelectedGenres();
+                    await LoadCardsAsync(_search!.Text);
+                };
+                var all = await _genres.GetAllAsync();
+                foreach (var g in all) _genreList.Items.Add(g, false);
+            }
+            _genreDropDown.Show(anchor, 0, anchor.Height);
+        }
+
+        private async Task ShowLangDropDown(Button anchor)
+        {
+            if (_langDropDown == null)
+            {
+                _langList = new CheckedListBox { Dock = DockStyle.Fill, CheckOnClick = true, BackColor = Color.FromArgb(55,55,60), ForeColor = Color.White };
+                var host = new ToolStripControlHost(_langList) { AutoSize = false, Size = new Size(200, 200) };
+                _langDropDown = new ToolStripDropDown();
+                _langDropDown.Items.Add(host);
+                _langList.ItemCheck += async (_,__) =>
+                {
+                    await Task.Delay(10);
+                    UpdateSelectedLangs();
+                    await LoadCardsAsync(_search!.Text);
+                };
+                var all = await _languages.GetAllAsync();
+                foreach (var l in all) _langList.Items.Add(l, false);
+            }
+            _langDropDown.Show(anchor, 0, anchor.Height);
+        }
+
+        private void UpdateSelectedGenres()
+        {
+            _selectedGenres.Clear();
+            if (_genreList is null) return;
+            foreach (var item in _genreList.CheckedItems)
+                if (item is Genre g) _selectedGenres.Add(g.GenreId);
+        }
+
+        private void UpdateSelectedLangs()
+        {
+            _selectedLangs.Clear();
+            if (_langList is null) return;
+            foreach (var item in _langList.CheckedItems)
+                if (item is LanguageCode l) _selectedLangs.Add(l.LangId);
+        }
+
+        private void ClearFilters()
+        {
+            _genreList?.ClearSelected();
+            if (_genreList is not null)
+                for (int i = 0; i < _genreList.Items.Count; i++)
+                    _genreList.SetItemChecked(i, false);
+            _langList?.ClearSelected();
+            if (_langList is not null)
+                for (int i = 0; i < _langList.Items.Count; i++)
+                    _langList.SetItemChecked(i, false);
+            _selectedGenres.Clear();
+            _selectedLangs.Clear();
+            if (_sortCombo is not null) _sortCombo.SelectedIndex = 0;
+        }
+
         #endregion
 
         #region Загрузка карточек (Books)
@@ -272,11 +413,20 @@ namespace LibraryApp.UI.Forms
                 ? await _books.GetAllDetailedAsync()
                 : await _books.FullTextAsync(query);
 
-            if (_sortButton is not null)
+            if (_selectedGenres.Count > 0)
+                books = books.Where(b => b.Genres.Any(g => _selectedGenres.Contains(g.GenreId))).ToList();
+
+            if (_selectedLangs.Count > 0)
+                books = books.Where(b => _selectedLangs.Contains(b.LangId)).ToList();
+
+            if (_sortCombo is not null)
             {
-                books = _sortByTitleAscending
-                    ? books.OrderBy(b => b.Title, StringComparer.OrdinalIgnoreCase).ToList()
-                    : books.OrderByDescending(b => b.Title, StringComparer.OrdinalIgnoreCase).ToList();
+                books = _sortCombo.SelectedIndex switch
+                {
+                    0 => books.OrderBy(b => b.Title, StringComparer.OrdinalIgnoreCase).ToList(),
+                    1 => books.OrderByDescending(b => b.Title, StringComparer.OrdinalIgnoreCase).ToList(),
+                    _ => books.OrderByDescending(b => b.BookId).ToList()
+                };
             }
 
             foreach (var book in books)
@@ -381,7 +531,7 @@ namespace LibraryApp.UI.Forms
             if (sender is Control c && c.Tag is Book b)
             {
                 using var f = new BookDetailForm(b, _books, _transactions);
-                f.Show();
+                f.ShowDialog(this);
             }
         }
         #endregion
