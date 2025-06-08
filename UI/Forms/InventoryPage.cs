@@ -156,9 +156,24 @@ namespace LibraryApp.UI.Forms
 
             Shown += async (_, __) =>
             {
+                AdjustLayout();
                 await LoadLocationsAsync();
                 await LoadTransactionsAsync();
             };
+            Resize += (_, __) => AdjustLayout();
+
+            void AdjustLayout()
+            {
+                int margin = 20;
+                btnAdd.Top = ClientSize.Height - btnAdd.Height - margin;
+                btnEdit.Top = btnAdd.Top;
+                btnDel.Top = btnAdd.Top;
+
+                btnAddTr.Top = ClientSize.Height - btnAddTr.Height - margin;
+
+                _gridLoc.Height = btnAdd.Top - _gridLoc.Top - 10;
+                _gridTrans.Height = btnAddTr.Top - _gridTrans.Top - 10;
+            }
         }
 
         // --- Сортировка ---

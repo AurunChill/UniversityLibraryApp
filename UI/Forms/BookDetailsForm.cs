@@ -104,11 +104,15 @@ public sealed class BookDetailForm : Form
         {
             Text = t,
             AutoSize = true,
+            MaximumSize = new Size(parent.Width - 10, 0),
             Left = 0,
             Top = y,
             Font = new Font("Segoe UI", sz, fs),
             ForeColor = c ?? Color.Gainsboro
         };
+        // Предварительно вычисляем высоту с учётом переноса
+        var preferred = lbl.GetPreferredSize(new Size(parent.Width - 10, 0));
+        lbl.Size = preferred;
         y += lbl.Height + 6;
         return lbl;
     }
