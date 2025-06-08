@@ -123,6 +123,10 @@ namespace LibraryApp.UI.Forms
                 {
                     switch (navPage)
                     {
+                        case "Инвентарь":
+                            using (var f = _provider.GetRequiredService<InventoryPage>())
+                                f.ShowDialog(this);
+                            break;
                         case "Долги":
                             using (var f = _provider.GetRequiredService<DebtsPage>())
                                 f.ShowDialog(this);
