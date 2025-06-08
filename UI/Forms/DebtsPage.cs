@@ -31,6 +31,7 @@ public sealed class DebtsPage : TablePageBase
         Text = "Долги";
         MinimumSize = new Size(1000, 700);
         StartPosition = FormStartPosition.CenterParent;
+        WindowState = FormWindowState.Maximized;
 
         var header = new Label
         {

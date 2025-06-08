@@ -30,12 +30,12 @@ public class BookService : BaseService<Book>
             .AsNoTracking();
         if (!string.IsNullOrWhiteSpace(q))
         {
-            q = q.Trim();
+            q = q.Trim().ToLower();
             query = query.Where(b =>
-                b.Title.Contains(q) ||
-                (b.Description != null && b.Description.Contains(q)) ||
-                b.Authors.Any(a => a.Author!.Name.Contains(q)) ||
-                (b.Publisher != null && b.Publisher.Name.Contains(q))
+                b.Title.ToLower().Contains(q) ||
+                (b.Description != null && b.Description.ToLower().Contains(q)) ||
+                b.Authors.Any(a => a.Author!.Name.ToLower().Contains(q)) ||
+                (b.Publisher != null && b.Publisher.Name.ToLower().Contains(q))
             );
         }
         return await query.ToListAsync();

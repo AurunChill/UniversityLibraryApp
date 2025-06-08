@@ -56,11 +56,21 @@ public sealed class BookDetailForm : Form
 
         int y = 0;
         details.Controls.Add(Make(details, _book.Title, 20, FontStyle.Bold, ref y, Color.White));
-        var authorName = _book.Authors?.FirstOrDefault()?.Author?.Name ?? "";
-        details.Controls.Add(Make(details, $"Автор: {authorName}", 12, 0, ref y));
-        details.Controls.Add(Make(details, $"ISBN: {_book.ISBN}", 12, 0, ref y));
+        string authors = string.Join(", ", _book.Authors.Select(a => a.Author!.Name));
+        if (!string.IsNullOrEmpty(authors))
+            details.Controls.Add(Make(details, $"Автор(ы): {authors}", 12, 0, ref y));
+        string genres = string.Join(", ", _book.Genres.Select(g => g.Genre!.Name));
+        if (!string.IsNullOrEmpty(genres))
+            details.Controls.Add(Make(details, $"Жанр: {genres}", 12, 0, ref y));
+        if (_book.Language is not null)
+            details.Controls.Add(Make(details, $"Язык: {_book.Language.Code}", 12, 0, ref y));
+        if (_book.Publisher is not null)
+            details.Controls.Add(Make(details, $"Издатель: {_book.Publisher.Name}", 12, 0, ref y));
         if (_book.PublishYear != null)
-            details.Controls.Add(Make(details, $"Год: {_book.PublishYear}",12,0,ref y));
+            details.Controls.Add(Make(details, $"Год издания: {_book.PublishYear}",12,0,ref y));
+        if (_book.Pages != null)
+            details.Controls.Add(Make(details, $"Страниц: {_book.Pages}",12,0,ref y));
+        details.Controls.Add(Make(details, $"ISBN: {_book.ISBN}", 12, 0, ref y));
         details.Controls.Add(Make(details, $"Описание:",12,FontStyle.Bold, ref y));
         var descBox = new TextBox
         {
@@ -120,7 +130,35 @@ internal sealed class TransactionsDialog : Form
         BackColor = Color.FromArgb(24,24,28);
         ForeColor = Color.Gainsboro;
 
-        var grid = new DataGridView { Dock = DockStyle.Fill, ReadOnly = true };
+        var grid = new DataGridView
+        {
+            Dock = DockStyle.Fill,
+            ReadOnly = true,
+            AutoGenerateColumns = true,
+            BackgroundColor = Color.FromArgb(40, 40, 46),
+            ForeColor = Color.Gainsboro,
+            BorderStyle = BorderStyle.None,
+            CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal
+        };
+        var style = new DataGridViewCellStyle
+        {
+            BackColor = Color.FromArgb(40, 40, 46),
+            ForeColor = Color.Gainsboro,
+            SelectionBackColor = Color.FromArgb(98, 0, 238),
+            SelectionForeColor = Color.White
+        };
+        grid.DefaultCellStyle = style;
+        grid.RowsDefaultCellStyle = style;
+        grid.AlternatingRowsDefaultCellStyle = new DataGridViewCellStyle(style)
+        {
+            BackColor = Color.FromArgb(32, 32, 38)
+        };
+        grid.ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle
+        {
+            BackColor = Color.FromArgb(55, 55, 60),
+            ForeColor = Color.White
+        };
+        grid.EnableHeadersVisualStyles = false;
         Controls.Add(grid);
 
         Shown += async (_,__) =>

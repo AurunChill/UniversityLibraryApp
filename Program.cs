@@ -32,12 +32,12 @@ internal static class Program
         builder.Services.AddScoped<PublisherService>();
         builder.Services.AddScoped<LanguageCodeService>();
         builder.Services.AddScoped<LocationService>();
-        builder.Services.AddScoped<InventoryPage>();
+        builder.Services.AddTransient<InventoryPage>();
 
         builder.Services.AddScoped<MainForm>();
-        builder.Services.AddScoped<DebtsPage>();
-        builder.Services.AddScoped<ReadersPage>();
-        builder.Services.AddScoped<BookDetailForm>();
+        builder.Services.AddTransient<DebtsPage>();
+        builder.Services.AddTransient<ReadersPage>();
+        builder.Services.AddTransient<BookDetailForm>();
         return builder.Build();
     }
 
