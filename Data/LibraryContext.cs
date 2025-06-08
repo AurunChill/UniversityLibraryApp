@@ -22,6 +22,23 @@ public class LibraryContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder b)
     {
-        // Additional configuration if needed
+        b.Entity<InventoryTransaction>()
+            .HasOne(t => t.Location)
+            .WithMany(l => l.Transactions)
+            .HasForeignKey(t => t.LocationId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        b.Entity<InventoryTransaction>()
+            .HasOne(t => t.PrevLocation)
+            .WithMany()
+            .HasForeignKey(t => t.PrevLocationId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        b.Entity<Book>()
+            .HasOne(bk => bk.Language)
+            .WithMany(l => l.Books)
+            .HasForeignKey(bk => bk.LangId)
+            .OnDelete(DeleteBehavior.Cascade);
+
     }
 }

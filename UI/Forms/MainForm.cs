@@ -304,12 +304,16 @@ namespace LibraryApp.UI.Forms
             };
             card.RoundCorners(12);
 
-            // Путь к изображению обложки
-            string imgPath = Path.Combine(
-                AppDomain.CurrentDomain.BaseDirectory,
-                "AppData", "Media", "Covers",
-                book.CoverUrl
-            );
+            // Путь к изображению обложки (может отсутствовать)
+            string? imgPath = null;
+            if (!string.IsNullOrWhiteSpace(book.CoverUrl))
+            {
+                imgPath = Path.Combine(
+                    AppDomain.CurrentDomain.BaseDirectory,
+                    "AppData", "Media", "Covers",
+                    book.CoverUrl
+                );
+            }
 
             var pic = new PictureBox
             {
@@ -380,6 +384,8 @@ namespace LibraryApp.UI.Forms
                 f.Show();
             }
         }
-
         #endregion
+    }
+}
+
 

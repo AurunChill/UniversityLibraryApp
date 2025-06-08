@@ -66,8 +66,8 @@ namespace LibraryApp.UI.Forms
             Controls.Add(_grid);
 
             // 5) Кнопки «Добавить» и «Удалить» ниже таблицы
-            var (btnAdd, btnDel) = CreateActionButtons();
-            Controls.AddRange(new Control[] { btnAdd, btnDel });
+            var (btnAdd, btnEdit, btnDel) = CreateActionButtons();
+            Controls.AddRange([btnAdd, btnDel]);
 
             // 6) При показе формы — загружаем данные
             Shown += async (_, __) => await RefreshGridAsync();
@@ -217,7 +217,7 @@ namespace LibraryApp.UI.Forms
         /// <summary>
         /// Упрощенная фабрика для создания кнопки с текстом, позицией и обработчиком клика.
         /// </summary>
-        private Button MakeButton(string text, int left, int top, EventHandler onClick)
+        private new Button MakeButton(string text, int left, int top, EventHandler onClick)
         {
             var btn = new Button
             {
