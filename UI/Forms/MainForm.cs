@@ -83,7 +83,6 @@ namespace LibraryApp.UI.Forms
 
             // По показу формы загружаем карточки
             Shown += async (_, __) => await LoadCardsAsync();
-            Activated += async (_, __) => await LoadCardsAsync(_search!.Text);
         }
 
         /// <summary>
