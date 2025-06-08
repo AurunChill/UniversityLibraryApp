@@ -83,7 +83,6 @@ namespace LibraryApp.UI.Forms
 
             // По показу формы загружаем карточки
             Shown += async (_, __) => await LoadCardsAsync();
-            Activated += async (_, __) => await LoadCardsAsync(_search!.Text);
         }
 
         /// <summary>
@@ -101,7 +100,7 @@ namespace LibraryApp.UI.Forms
             };
 
             Color accent = Color.FromArgb(98, 0, 238);
-            string[] navPages = { "Инвентарь", "Долги", "Читатели" };
+            string[] navPages = { "Инвентарь", "Долги", "Читатели", "Издатели" };
 
             foreach (string navPage in navPages)
             {
@@ -128,6 +127,10 @@ namespace LibraryApp.UI.Forms
                             break;
                         case "Читатели":
                             using (var f = _provider.GetRequiredService<ReadersPage>())
+                                f.ShowDialog(this);
+                            break;
+                        case "Издатели":
+                            using (var f = _provider.GetRequiredService<PublishersPage>())
                                 f.ShowDialog(this);
                             break;
                     }
