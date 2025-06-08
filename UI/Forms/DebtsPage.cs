@@ -208,20 +208,24 @@ internal sealed class DebtDialog : Form
 {
     private readonly ComboBox cbBook = new()
     {
-        DropDownStyle     = ComboBoxStyle.DropDownList,
+        DropDownStyle = ComboBoxStyle.DropDownList,
         AutoCompleteSource = AutoCompleteSource.ListItems,
-        AutoCompleteMode  = AutoCompleteMode.SuggestAppend
+        AutoCompleteMode = AutoCompleteMode.SuggestAppend
     };
     private readonly ComboBox cbTicket = new()
     {
-        DropDownStyle     = ComboBoxStyle.DropDownList,
+        DropDownStyle = ComboBoxStyle.DropDownList,
         AutoCompleteSource = AutoCompleteSource.ListItems,
-        AutoCompleteMode  = AutoCompleteMode.SuggestAppend
+        AutoCompleteMode = AutoCompleteMode.SuggestAppend
     };
     private readonly DateTimePicker dpStart = new() { Format = DateTimePickerFormat.Short };
     private readonly DateTimePicker dpEnd = new() { Format = DateTimePickerFormat.Short };
     private readonly DebtService _debts;
     private readonly BookService _books;
+
+    private readonly InventoryTransactionService _transactions;
+    private readonly LocationService _locations;
+
     private readonly ReaderTicketService _tickets;
     private readonly Debt? _orig;
 

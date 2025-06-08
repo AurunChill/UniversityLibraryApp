@@ -122,7 +122,7 @@ namespace LibraryApp.UI.Forms
 
             // --- Секция транзакций ---
             var offsetLeft = _gridLoc.Right + 40;
-            int transShift = 200; // shift controls left by 150px
+            int transShift = 0; // shift controls left by 150px
             var lblTrans = new Label
             {
                 Text     = "Транзакции",

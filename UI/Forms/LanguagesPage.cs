@@ -183,7 +183,7 @@ internal sealed class LanguageDialog : Form
         Controls.Add(ok);
 
         if (existing is not null)
-            tName.Text = existing.Name;
+            tName.Text = existing.Code;
 
         ok.Click += async (_, __) =>
         {
