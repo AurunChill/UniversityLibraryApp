@@ -1,8 +1,10 @@
 using System.Drawing;
+using System.Linq;
 using System.Windows.Forms;
 using LibraryApp.Data.Models;
 using LibraryApp.Data.Services;
 using LibraryApp.UI.Helpers;
+using ModelLocation = LibraryApp.Data.Models.Location;
 
 namespace LibraryApp.UI.Forms;
 
@@ -17,12 +19,17 @@ public sealed class DebtsPage : TablePageBase
     private readonly DebtService _debts;
     private readonly BookService _books;
     private readonly ReaderTicketService _tickets;
+    private readonly InventoryTransactionService _transactions;
+    private readonly LocationService _locations;
 
-    public DebtsPage(DebtService debts, ReaderTicketService tickets, BookService books)
+    public DebtsPage(DebtService debts, ReaderTicketService tickets, BookService books,
+        InventoryTransactionService transactions, LocationService locations)
     {
         _debts = debts;
         _books = books;
         _tickets = tickets;
+        _transactions = transactions;
+        _locations = locations;
         BuildUI();
     }
 
@@ -82,7 +89,7 @@ public sealed class DebtsPage : TablePageBase
 
         var btnAdd = MakeButton("Создать", _grid.Left, _grid.Bottom + 15, async (_, __) =>
         {
-            using var dlg = new DebtDialog(_debts, _books, _tickets);
+            using var dlg = new DebtDialog(_debts, _books, _tickets, _transactions, _locations);
             if (dlg.ShowDialog(this) == DialogResult.OK)
                 await LoadAsync();
         });
@@ -183,7 +190,7 @@ public sealed class DebtsPage : TablePageBase
         if (_grid.CurrentRow?.Cells["DebtId"].Value is not long id) return;
         var entity = await _debts.GetByIdAsync(id);
         if (entity is null) return;
-        using var dlg = new DebtDialog(_debts, _books, _tickets, entity);
+        using var dlg = new DebtDialog(_debts, _books, _tickets, _transactions, _locations, entity);
         if (dlg.ShowDialog(this) == DialogResult.OK)
             await LoadAsync();
     }
@@ -218,11 +225,14 @@ internal sealed class DebtDialog : Form
     private readonly ReaderTicketService _tickets;
     private readonly Debt? _orig;
 
-    public DebtDialog(DebtService debts, BookService books, ReaderTicketService tickets, Debt? existing = null)
+    public DebtDialog(DebtService debts, BookService books, ReaderTicketService tickets,
+        InventoryTransactionService transactions, LocationService locations, Debt? existing = null)
     {
         _debts = debts;
         _books = books;
         _tickets = tickets;
+        _transactions = transactions;
+        _locations = locations;
         _orig = existing;
         Text = existing is null ? "Новый долг" : "Редактирование";
         Size = new Size(420, 320);
@@ -292,12 +302,20 @@ internal sealed class DebtDialog : Form
 
     private async Task SaveAsync()
     {
-        if (cbBook.SelectedValue is not long bookId || cbTicket.SelectedValue is not long ticketId)
+        if (cbBook.SelectedValue is not long bookId || cbTicket.SelectedItem is not ReaderTicket ticket)
         {
             MessageBox.Show("Выберите книгу и билет");
             DialogResult = DialogResult.None;
             return;
         }
+
+        if (ticket.EndTime is DateOnly et && et < DateOnly.FromDateTime(DateTime.Today))
+        {
+            MessageBox.Show("Билет просрочен");
+            DialogResult = DialogResult.None;
+            return;
+        }
+        long ticketId = ticket.ReaderId;
 
         if (_orig is null)
         {
@@ -308,6 +326,28 @@ internal sealed class DebtDialog : Form
                 StartTime = DateOnly.FromDateTime(dpStart.Value),
                 EndTime = DateOnly.FromDateTime(dpEnd.Value)
             });
+
+            var locations = await _locations.GetAllAsync();
+            var toLoc = locations.FirstOrDefault(l => l.LocationName == ticket.Reader!.FullName);
+            if (toLoc is null)
+                toLoc = await _locations.AddAsync(new ModelLocation { LocationName = ticket.Reader!.FullName, Amount = 0 });
+            var fromLoc = locations.FirstOrDefault();
+            var tran = new InventoryTransaction
+            {
+                BookId = bookId,
+                LocationId = toLoc.LocationId,
+                PrevLocationId = fromLoc?.LocationId,
+                Date = DateOnly.FromDateTime(DateTime.Today),
+                Amount = 1
+            };
+            await _transactions.AddAsync(tran);
+            toLoc.Amount += 1;
+            if (fromLoc is not null)
+            {
+                fromLoc.Amount -= 1;
+                await _locations.UpdateAsync(fromLoc);
+            }
+            await _locations.UpdateAsync(toLoc);
         }
         else
         {

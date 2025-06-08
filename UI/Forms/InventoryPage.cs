@@ -29,6 +29,7 @@ namespace LibraryApp.UI.Forms
         private readonly PublisherService                _publishers;
         private readonly GenreService                   _genres;
         private readonly LanguageCodeService            _languages;
+        private readonly BookService                    _books;
 
         public InventoryPage(
             LocationService locations,
@@ -36,7 +37,8 @@ namespace LibraryApp.UI.Forms
             IDbContextFactory<LibraryContext> db,
             PublisherService publishers,
             GenreService genres,
-            LanguageCodeService languages)
+            LanguageCodeService languages,
+            BookService books)
         {
             _locations   = locations;
             _transactions = transactions;
@@ -44,6 +46,7 @@ namespace LibraryApp.UI.Forms
             _publishers   = publishers;
             _genres       = genres;
             _languages    = languages;
+            _books        = books;
             BuildUI();
         }
 
@@ -119,7 +122,7 @@ namespace LibraryApp.UI.Forms
 
             // --- Секция транзакций ---
             var offsetLeft = _gridLoc.Right + 40;
-            int transShift = 350;
+            int transShift = 200; // shift controls left by 150px
             var lblTrans = new Label
             {
                 Text     = "Транзакции",
@@ -160,7 +163,7 @@ namespace LibraryApp.UI.Forms
 
             var btnAddTr = MakeButton("Создать", _gridTrans.Left + transShift, _gridTrans.Bottom + 10, async (_, __) =>
             {
-                using var page = new TransactionAddPage(_transactions, _locations, _db, _publishers, _genres, _languages);
+                using var page = new TransactionAddPage(_transactions, _locations, _db, _publishers, _genres, _languages, _books);
                 if (page.ShowDialog(this) == DialogResult.OK)
                     await LoadTransactionsAsync();
             });
@@ -393,6 +396,7 @@ namespace LibraryApp.UI.Forms
         private readonly PublisherService            _publishers;
         private readonly GenreService               _genres;
         private readonly LanguageCodeService        _languages;
+        private readonly BookService               _books;
         private readonly ComboBox      cbTo     = new()
         {
             DropDownStyle     = ComboBoxStyle.DropDownList,
@@ -408,6 +412,14 @@ namespace LibraryApp.UI.Forms
         private readonly DateTimePicker dt      = new() { Value = DateTime.Today };
         private readonly NumericUpDown  num     = new() { Minimum = 1, Maximum = 1000, Value = 1 };
         private readonly CheckBox       chk     = new() { Text = "Сформировать книгу?", AutoSize = true };
+
+        // Выбор существующей книги
+        private readonly ComboBox      cbBook = new()
+        {
+            DropDownStyle = ComboBoxStyle.DropDownList,
+            AutoCompleteSource = AutoCompleteSource.ListItems,
+            AutoCompleteMode = AutoCompleteMode.SuggestAppend
+        };
 
         // Поля для новой книги
         private readonly TextBox       tIsbn   = new();
@@ -432,7 +444,8 @@ namespace LibraryApp.UI.Forms
             IDbContextFactory<LibraryContext> db,
             PublisherService publishers,
             GenreService genres,
-            LanguageCodeService languages)
+            LanguageCodeService languages,
+            BookService books)
         {
             _transactions = transactions;
             _locations    = locations;
@@ -440,6 +453,7 @@ namespace LibraryApp.UI.Forms
             _publishers   = publishers;
             _genres       = genres;
             _languages    = languages;
+            _books        = books;
             BuildUI();
         }
 
@@ -475,8 +489,13 @@ namespace LibraryApp.UI.Forms
             num.Left = 150; num.Top = y + 102; num.Width = 100;
             Controls.Add(num);
 
+            // «Книга» для переноса
+            Controls.Add(new Label { Text = "Книга", AutoSize = true, Left = 20, Top = y + 140 });
+            cbBook.Left = 150; cbBook.Top = y + 137; cbBook.Width = half - 170;
+            Controls.Add(cbBook);
+
             // Чекбокс «сформировать книгу»
-            chk.Left = 20; chk.Top = y + 150;
+            chk.Left = 20; chk.Top = y + 175;
             Controls.Add(chk);
 
             // Панель деталей книги (скрыта по умолчанию)
@@ -502,7 +521,7 @@ namespace LibraryApp.UI.Forms
 
                 new Label{Text="Языки", AutoSize=true, Left=0, Top=y2+=35},
                 clLanguages.At(120, y2-3, 200),
-                new Label{Text="Название", AutoSize=true, Left=0, Top=y2+=35},
+                new Label{Text="Название", AutoSize=true, Left=0, Top=y2+=clLanguages.Height+10},
                 tTitle.At(120, y2-3, 320),
 
                 new Label{Text="Описание", AutoSize=true, Left=0, Top=y2+=35},
@@ -559,6 +578,10 @@ namespace LibraryApp.UI.Forms
         {
             cbPublisher.DataSource = (await _publishers.GetAllAsync()).ToList();
             cbPublisher.DisplayMember = nameof(Publisher.Name);
+
+            cbBook.DataSource = (await _books.GetAllAsync()).ToList();
+            cbBook.DisplayMember = nameof(Book.Title);
+            cbBook.ValueMember = nameof(Book.BookId);
 
             clLanguages.Items.Clear();
             foreach (var l in await _languages.GetAllAsync()) clLanguages.Items.Add(l);
@@ -620,8 +643,13 @@ namespace LibraryApp.UI.Forms
             }
             else
             {
-                // упрощённо
-                bookId = 1;
+                if (cbBook.SelectedValue is not long idSel)
+                {
+                    MessageBox.Show("Выберите книгу");
+                    DialogResult = DialogResult.None;
+                    return;
+                }
+                bookId = idSel;
             }
 
             var tran = new ModelInventoryTransaction
@@ -633,6 +661,10 @@ namespace LibraryApp.UI.Forms
                 Amount         = (int)num.Value
             };
             await _transactions.AddAsync(tran);
+            toLoc.Amount   += (int)num.Value;
+            fromLoc.Amount -= (int)num.Value;
+            await _locations.UpdateAsync(toLoc);
+            await _locations.UpdateAsync(fromLoc);
         }
     }
 }
