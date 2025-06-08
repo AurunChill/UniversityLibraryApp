@@ -16,6 +16,7 @@ public class LibraryContext : DbContext
     public DbSet<InventoryTransaction> InventoryTransactions => Set<InventoryTransaction>();
     public DbSet<GenreBook> GenreBooks => Set<GenreBook>();
     public DbSet<AuthorBook> AuthorBooks => Set<AuthorBook>();
+    public DbSet<BookLanguage> BookLanguages => Set<BookLanguage>();
     public DbSet<Reader> Readers => Set<Reader>();
     public DbSet<ReaderTicket> ReaderTickets => Set<ReaderTicket>();
     public DbSet<Debt> Debts => Set<Debt>();
@@ -38,6 +39,18 @@ public class LibraryContext : DbContext
             .HasOne(bk => bk.Language)
             .WithMany(l => l.Books)
             .HasForeignKey(bk => bk.LangId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        b.Entity<BookLanguage>()
+            .HasOne(bl => bl.Book)
+            .WithMany(bk => bk.Languages)
+            .HasForeignKey(bl => bl.BookId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        b.Entity<BookLanguage>()
+            .HasOne(bl => bl.Language)
+            .WithMany()
+            .HasForeignKey(bl => bl.LangId)
             .OnDelete(DeleteBehavior.Cascade);
 
     }

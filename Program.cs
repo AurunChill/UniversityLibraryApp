@@ -33,6 +33,9 @@ internal static class Program
         builder.Services.AddScoped<LanguageCodeService>();
         builder.Services.AddScoped<LocationService>();
         builder.Services.AddTransient<InventoryPage>();
+        builder.Services.AddTransient<PublishersPage>();
+        builder.Services.AddTransient<GenresPage>();
+        builder.Services.AddTransient<LanguagesPage>();
 
         builder.Services.AddScoped<MainForm>();
         builder.Services.AddTransient<DebtsPage>();

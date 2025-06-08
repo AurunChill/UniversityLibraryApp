@@ -67,10 +67,25 @@ namespace LibraryApp.UI.Forms
 
             // 5) Кнопки «Добавить» и «Удалить» ниже таблицы
             var (btnAdd, btnEdit, btnDel) = CreateActionButtons();
-            Controls.AddRange([btnAdd, btnDel]);
+            Controls.AddRange([btnAdd, btnEdit, btnDel]);
 
             // 6) При показе формы — загружаем данные
-            Shown += async (_, __) => await RefreshGridAsync();
+            Shown += async (_, __) =>
+            {
+                AdjustLayout();
+                await RefreshGridAsync();
+            };
+            Resize += (_, __) => AdjustLayout();
+
+            void AdjustLayout()
+            {
+                int margin = 20;
+                btnAdd.Top = ClientSize.Height - btnAdd.Height - margin;
+                btnEdit.Top = btnAdd.Top;
+                btnDel.Top = btnAdd.Top;
+
+                _grid.Height = btnAdd.Top - _grid.Top - 10;
+            }
         }
 
         /// <summary>
