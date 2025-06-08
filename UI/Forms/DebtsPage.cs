@@ -65,6 +65,7 @@ public sealed class DebtsPage : TablePageBase
         Controls.Add(hint);
 
         _grid = CreateGrid(hint.Bottom + 5, _bs);
+        _grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
         _grid.ColumnHeaderMouseClick += async (s, e) =>
         {
             var col = _grid.Columns[e.ColumnIndex].DataPropertyName;
@@ -106,6 +107,8 @@ public sealed class DebtsPage : TablePageBase
             btnDel.Top = btnAdd.Top;
 
             _grid.Height = btnAdd.Top - _grid.Top - 10;
+            _grid.Width = ClientSize.Width - 40;
+
         }
     }
 

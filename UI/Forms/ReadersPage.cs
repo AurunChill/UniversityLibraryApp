@@ -177,15 +177,15 @@ internal sealed class ReaderDialog : Form
         Controls.AddRange(new Control[]
         {
             new Label { Text = "ФИО", AutoSize = true, Left = 20, Top = y },
-            tName.At(180, y - 3, 220),
+            tName.At(200, y - 3, 220),
             new Label { Text = "E-mail", AutoSize = true, Left = 20, Top = y += 35 },
-            tEmail.At(180, y - 3, 220),
+            tEmail.At(200, y - 3, 220),
             new Label { Text = "Телефон", AutoSize = true, Left = 20, Top = y += 35 },
-            tPhone.At(180, y - 3, 220),
+            tPhone.At(200, y - 3, 220),
             new Label { Text = "Дата регистрации", AutoSize = true, Left = 20, Top = y += 35 },
-            dpReg.At(180, y - 3),
+            dpReg.At(200, y - 3),
             new Label { Text = "Окончание", AutoSize = true, Left = 20, Top = y += 35 },
-            dpEnd.At(180, y - 3)
+            dpEnd.At(200, y - 3)
         });
 
         var ok = new Button

@@ -9,13 +9,15 @@ public sealed class BookDetailForm : Form
     private Book _book;
     private readonly BookService _books;
     private readonly InventoryTransactionService _transactions;
+    private readonly PublisherService _publishers;
     private PictureBox _cover = null!;
 
-    public BookDetailForm(Book book, BookService books, InventoryTransactionService transactions)
+    public BookDetailForm(Book book, BookService books, InventoryTransactionService transactions, PublisherService publishers)
     {
         _book = book;
         _books = books;
         _transactions = transactions;
+        _publishers = publishers;
         BuildUI();
     }
 
@@ -110,7 +112,7 @@ public sealed class BookDetailForm : Form
         };
         btnEdit.Click += async (_,__) =>
         {
-            using var dlg = new BookEditDialog(_books, _book);
+            using var dlg = new BookEditDialog(_books, _publishers, _book);
             if (dlg.ShowDialog(this) == DialogResult.OK)
             {
                 var fresh = await _books.GetByIdAsync(_book.BookId);
@@ -220,16 +222,19 @@ internal sealed class TransactionsDialog : Form
 internal sealed class BookEditDialog : Form
 {
     private readonly BookService _books;
+    private readonly PublisherService _publishers;
     private readonly Book _book;
     private readonly TextBox tTitle = new();
     private readonly TextBox tIsbn = new();
     private readonly NumericUpDown numYear = new() { Minimum = 0, Maximum = DateTime.Now.Year };
     private readonly NumericUpDown numPages = new() { Minimum = 0, Maximum = 10000 };
     private readonly TextBox tDesc = new() { Multiline = true, Height = 80 };
+    private readonly ComboBox cbPublisher = new() { DropDownStyle = ComboBoxStyle.DropDownList, AutoCompleteMode = AutoCompleteMode.SuggestAppend, AutoCompleteSource = AutoCompleteSource.ListItems };
 
-    public BookEditDialog(BookService books, Book book)
+    public BookEditDialog(BookService books, PublisherService publishers, Book book)
     {
         _books = books;
+        _publishers = publishers;
         _book = book;
 
         Text = "Редактирование";
@@ -246,6 +251,8 @@ internal sealed class BookEditDialog : Form
         Controls.Add(new Label { Text = "ISBN", AutoSize = true, Left = 20, Top = y += 35 });
         tIsbn.At(150, y - 3, 200); Controls.Add(tIsbn);
 
+        Controls.Add(new Label { Text = "Издатель", AutoSize = true, Left = 20, Top = y += 35 });
+        cbPublisher.At(150, y - 3, 200); Controls.Add(cbPublisher);
         Controls.Add(new Label { Text = "Год", AutoSize = true, Left = 20, Top = y += 35 });
         numYear.At(150, y - 3); Controls.Add(numYear);
 
@@ -269,13 +276,18 @@ internal sealed class BookEditDialog : Form
         };
         Controls.Add(ok);
 
-        Load += (_, __) =>
+        Load += async (_, __) =>
         {
             tTitle.Text = _book.Title;
             tIsbn.Text = _book.ISBN;
             if (_book.PublishYear is int yv) numYear.Value = yv;
             if (_book.Pages is int p) numPages.Value = p;
             tDesc.Text = _book.Description ?? string.Empty;
+            cbPublisher.DataSource = (await _publishers.GetAllAsync()).ToList();
+            cbPublisher.DisplayMember = nameof(Publisher.Name);
+            cbPublisher.SelectedItem = cbPublisher.Items
+                .Cast<Publisher?>()
+                .FirstOrDefault(p => p?.PublisherId == _book.PublisherId);
         };
 
         ok.Click += async (_, __) => await SaveAsync();
@@ -294,6 +306,7 @@ internal sealed class BookEditDialog : Form
         _book.ISBN = tIsbn.Text;
         _book.PublishYear = (int)numYear.Value;
         _book.Pages = (int)numPages.Value;
+        _book.PublisherId = cbPublisher.SelectedItem is Publisher p ? p.PublisherId : null;
         _book.Description = tDesc.Text;
         await _books.UpdateAsync(_book);
     }

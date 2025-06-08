@@ -182,6 +182,10 @@ namespace LibraryApp.UI.Forms
 
                 btnAddTr.Top = ClientSize.Height - btnAddTr.Height - margin;
 
+                int tableWidth = (ClientSize.Width - 80) / 2;
+                _gridLoc.Width = tableWidth;
+                _gridTrans.Width = tableWidth;
+                _gridTrans.Left = _gridLoc.Right + 40;
                 _gridLoc.Height = btnAdd.Top - _gridLoc.Top - 10;
                 _gridTrans.Height = btnAddTr.Top - _gridTrans.Top - 10;
             }
@@ -385,8 +389,8 @@ namespace LibraryApp.UI.Forms
         private readonly GenreService               _genres;
         private readonly LanguageCodeService        _languages;
 
-        private readonly ComboBox      cbTo     = new() { DropDownStyle = ComboBoxStyle.DropDownList };
-        private readonly ComboBox      cbFrom   = new() { DropDownStyle = ComboBoxStyle.DropDownList };
+        private readonly ComboBox      cbTo     = new() { DropDownStyle = ComboBoxStyle.DropDownList, AutoCompleteMode = AutoCompleteMode.SuggestAppend, AutoCompleteSource = AutoCompleteSource.ListItems };
+        private readonly ComboBox      cbFrom   = new() { DropDownStyle = ComboBoxStyle.DropDownList, AutoCompleteMode = AutoCompleteMode.SuggestAppend, AutoCompleteSource = AutoCompleteSource.ListItems };
         private readonly DateTimePicker dt      = new() { Value = DateTime.Today };
         private readonly NumericUpDown  num     = new() { Minimum = 1, Maximum = 1000, Value = 1 };
         private readonly CheckBox       chk     = new() { Text = "Сформировать книгу?", AutoSize = true };
@@ -395,11 +399,11 @@ namespace LibraryApp.UI.Forms
         private readonly TextBox       tIsbn   = new();
         private readonly TextBox       tTitle  = new();
         private readonly NumericUpDown tYear   = new() { Minimum = 0, Maximum = DateTime.Now.Year, Value = DateTime.Now.Year };
-        private readonly ComboBox      cbPublisher = new() { DropDownStyle = ComboBoxStyle.DropDownList };
-        private readonly ComboBox      cbLanguage  = new() { DropDownStyle = ComboBoxStyle.DropDownList };
+        private readonly ComboBox      cbPublisher = new() { DropDownStyle = ComboBoxStyle.DropDownList, AutoCompleteMode = AutoCompleteMode.SuggestAppend, AutoCompleteSource = AutoCompleteSource.ListItems };
+        private readonly CheckedListBox clLanguages = new() { CheckOnClick = true, Height = 80 };
         private readonly TextBox       tDescription = new() { Multiline = true, Height = 60, ScrollBars = ScrollBars.Vertical };
         private readonly NumericUpDown tPages   = new() { Minimum = 1, Maximum = 10000 };
-        private readonly ComboBox      cbGenre   = new() { DropDownStyle = ComboBoxStyle.DropDownList };
+        private readonly CheckedListBox clGenres  = new() { CheckOnClick = true, Height = 80 };
         private readonly TextBox       tCover   = new() { ReadOnly = true, BackColor = SystemColors.Window };
         private readonly Button        btnBrowse = new() { Text = "Файл…", Height = 30 };
 
@@ -477,9 +481,8 @@ namespace LibraryApp.UI.Forms
                 new Label{Text="Год", AutoSize=true, Left=0, Top=y2+=35},
                 tYear.At(120, y2-3, 120),
 
-                new Label{Text="Язык", AutoSize=true, Left=0, Top=y2+=35},
-                cbLanguage.At(120, y2-3, 200),
-
+                new Label{Text="Языки", AutoSize=true, Left=0, Top=y2+=35},
+                clLanguages.At(120, y2-3, 200),
                 new Label{Text="Название", AutoSize=true, Left=0, Top=y2+=35},
                 tTitle.At(120, y2-3, 320),
 
@@ -492,9 +495,8 @@ namespace LibraryApp.UI.Forms
                 new Label{Text="Обложка", AutoSize=true, Left=0, Top=y2+=35},
                 tCover.At(120, y2-3, 200),
                 btnBrowse.At(330, y2-4, 80),
-
-                new Label{Text="Жанр", AutoSize=true, Left=0, Top=y2+=35},
-                cbGenre.At(120, y2-3, 320)
+                new Label{Text="Жанры", AutoSize=true, Left=0, Top=y2+=35},
+                clGenres.At(120, y2-3, 320)
             });
             Controls.Add(bookPanel);
 
@@ -539,11 +541,13 @@ namespace LibraryApp.UI.Forms
             cbPublisher.DataSource = (await _publishers.GetAllAsync()).ToList();
             cbPublisher.DisplayMember = nameof(Publisher.Name);
 
-            cbLanguage.DataSource = (await _languages.GetAllAsync()).ToList();
-            cbLanguage.DisplayMember = nameof(LanguageCode.Code);
+            clLanguages.Items.Clear();
+            foreach (var l in await _languages.GetAllAsync()) clLanguages.Items.Add(l);
+            clLanguages.DisplayMember = nameof(LanguageCode.Code);
 
-            cbGenre.DataSource = (await _genres.GetAllAsync()).ToList();
-            cbGenre.DisplayMember = nameof(Genre.Name);
+            clGenres.Items.Clear();
+            foreach (var g in await _genres.GetAllAsync()) clGenres.Items.Add(g);
+            clGenres.DisplayMember = nameof(Genre.Name);
         }
 
         private void ChooseCover(object? sender, EventArgs e)
@@ -579,10 +583,18 @@ namespace LibraryApp.UI.Forms
                     Pages       = (int)tPages.Value,
                     CoverUrl    = "no_cover.png",
                     PublisherId = cbPublisher.SelectedItem is Publisher p ? p.PublisherId : null,
-                    LangId      = cbLanguage.SelectedItem is LanguageCode l ? l.LangId : 0,
                 };
-                if (cbGenre.SelectedItem is Genre g)
-                    book.Genres.Add(new GenreBook { GenreId = g.GenreId });
+
+                var langIds = clLanguages.CheckedItems.Cast<LanguageCode>().Select(l => l.LangId).ToList();
+                if (langIds.Count > 0)
+                    book.LangId = langIds[0];
+                foreach (var id in langIds)
+                    book.Languages.Add(new BookLanguage { LangId = id });
+
+                foreach (var item in clGenres.CheckedItems)
+                    if (item is Genre g)
+                        book.Genres.Add(new GenreBook { GenreId = g.GenreId });
+
                 await using var db = await _db.CreateDbContextAsync();
                 db.Books.Add(book);
                 await db.SaveChangesAsync();

@@ -77,6 +77,12 @@ namespace LibraryApp.Data
   book_id         INTEGER NOT NULL REFERENCES Book(book_id) ON DELETE CASCADE,
   UNIQUE(author_id, book_id)
 );",
+            @"CREATE TABLE IF NOT EXISTS BookLanguage (
+  book_language_id INTEGER PRIMARY KEY AUTOINCREMENT,
+  book_id          INTEGER NOT NULL REFERENCES Book(book_id) ON DELETE CASCADE,
+  lang_id          INTEGER NOT NULL REFERENCES LanguageCode(lang_id) ON DELETE CASCADE,
+  UNIQUE(book_id, lang_id)
+);",
             @"CREATE TABLE IF NOT EXISTS Reader (
   reader_id   INTEGER PRIMARY KEY AUTOINCREMENT,
   full_name   TEXT    NOT NULL,
