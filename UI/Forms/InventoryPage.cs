@@ -1,5 +1,6 @@
 using System.Drawing;
 using System.Windows.Forms;
+using LibraryApp.Data;
 using LibraryApp.Data.Models;
 using LibraryApp.Data.Services;
 using LibraryApp.UI.Helpers;
@@ -397,7 +398,7 @@ internal sealed class TransactionAddPage : Form
 
     private async Task SaveAsync()
     {
-        if (cbTo.SelectedItem is not Location to || cbFrom.SelectedItem is not Location from)
+        if (cbTo.SelectedItem is not Location toLoc || cbFrom.SelectedItem is not Location fromLoc)
         {
             MessageBox.Show("Выберите места");
             DialogResult = DialogResult.None;
@@ -430,8 +431,8 @@ internal sealed class TransactionAddPage : Form
         var tran = new InventoryTransaction
         {
             BookId = bookId,
-            LocationId = to.LocationId,
-            PrevLocationId = from.LocationId,
+            LocationId = toLoc.LocationId,
+            PrevLocationId = fromLoc.LocationId,
             Date = DateOnly.FromDateTime(dt.Value.Date),
             Amount = (int)num.Value
         };
