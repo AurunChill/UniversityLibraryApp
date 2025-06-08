@@ -14,6 +14,7 @@ namespace LibraryApp.UI.Forms
         private readonly InventoryTransactionService _transactions;
         private readonly GenreService _genres;
         private readonly LanguageCodeService _languages;
+        private readonly PublisherService _publishers;
         private FlowLayoutPanel? _cardPanel;
         private Label? _countLabel;
         private TextBox? _search;
@@ -30,13 +31,15 @@ namespace LibraryApp.UI.Forms
         public MainForm(IServiceProvider provider, BookService books,
             InventoryTransactionService transactions,
             GenreService genres,
-            LanguageCodeService languages)
+            LanguageCodeService languages,
+            PublisherService publishers)
         {
             _provider = provider;
             _books = books;
             _transactions = transactions;
             _genres = genres;
             _languages = languages;
+            _publishers = publishers;
             _screenBounds = Screen.PrimaryScreen!.Bounds;
             InitializeComponent();
         }
@@ -83,7 +86,6 @@ namespace LibraryApp.UI.Forms
 
             // По показу формы загружаем карточки
             Shown += async (_, __) => await LoadCardsAsync();
-            Activated += async (_, __) => await LoadCardsAsync(_search!.Text);
         }
 
         /// <summary>
@@ -101,7 +103,7 @@ namespace LibraryApp.UI.Forms
             };
 
             Color accent = Color.FromArgb(98, 0, 238);
-            string[] navPages = { "Инвентарь", "Долги", "Читатели" };
+            string[] navPages = { "Инвентарь", "Долги", "Читатели", "Издатели", "Жанры", "Языки" };
 
             foreach (string navPage in navPages)
             {
@@ -128,6 +130,18 @@ namespace LibraryApp.UI.Forms
                             break;
                         case "Читатели":
                             using (var f = _provider.GetRequiredService<ReadersPage>())
+                                f.ShowDialog(this);
+                            break;
+                        case "Издатели":
+                            using (var f = _provider.GetRequiredService<PublishersPage>())
+                                f.ShowDialog(this);
+                            break;
+                        case "Жанры":
+                            using (var f = _provider.GetRequiredService<GenresPage>())
+                                f.ShowDialog(this);
+                            break;
+                        case "Языки":
+                            using (var f = _provider.GetRequiredService<LanguagesPage>())
                                 f.ShowDialog(this);
                             break;
                     }
@@ -538,7 +552,7 @@ namespace LibraryApp.UI.Forms
         {
             if (sender is Control c && c.Tag is Book b)
             {
-                using var f = new BookDetailForm(b, _books, _transactions);
+                using var f = new BookDetailForm(b, _books, _transactions, _publishers);
                 f.ShowDialog(this);
             }
         }

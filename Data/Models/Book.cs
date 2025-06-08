@@ -40,6 +40,7 @@ public class Book
 
     public ICollection<GenreBook> Genres { get; set; } = new List<GenreBook>();
     public ICollection<AuthorBook> Authors { get; set; } = new List<AuthorBook>();
+    public ICollection<BookLanguage> Languages { get; set; } = new List<BookLanguage>();
     public ICollection<InventoryTransaction> InventoryTransactions { get; set; } = new List<InventoryTransaction>();
     public ICollection<Debt> Debts { get; set; } = new List<Debt>();
 }

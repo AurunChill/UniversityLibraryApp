@@ -65,6 +65,7 @@ public sealed class DebtsPage : TablePageBase
         Controls.Add(hint);
 
         _grid = CreateGrid(hint.Bottom + 5, _bs);
+        _grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
         _grid.ColumnHeaderMouseClick += async (s, e) =>
         {
             var col = _grid.Columns[e.ColumnIndex].DataPropertyName;
@@ -91,7 +92,23 @@ public sealed class DebtsPage : TablePageBase
             if (await Delete()) await LoadAsync();
         });
         Controls.AddRange(new Control[] { btnAdd, btnEdit, btnDel });
-        Shown += async (_, __) => await LoadAsync();
+        Shown += async (_, __) =>
+        {
+            AdjustLayout();
+            await LoadAsync();
+        };
+        Resize += (_, __) => AdjustLayout();
+
+        void AdjustLayout()
+        {
+            int margin = 20;
+            btnAdd.Top = ClientSize.Height - btnAdd.Height - margin;
+            btnEdit.Top = btnAdd.Top;
+            btnDel.Top = btnAdd.Top;
+
+            _grid.Height = btnAdd.Top - _grid.Top - 10;
+            _grid.Width = ClientSize.Width - 40;
+        }
     }
 
     private async Task LoadAsync()
@@ -184,15 +201,15 @@ internal sealed class DebtDialog : Form
 {
     private readonly ComboBox cbBook = new()
     {
-        DropDownStyle = ComboBoxStyle.DropDownList,
-        AutoCompleteMode = AutoCompleteMode.SuggestAppend,
-        AutoCompleteSource = AutoCompleteSource.ListItems
+        DropDownStyle     = ComboBoxStyle.DropDownList,
+        AutoCompleteSource = AutoCompleteSource.ListItems,
+        AutoCompleteMode  = AutoCompleteMode.SuggestAppend
     };
     private readonly ComboBox cbTicket = new()
     {
-        DropDownStyle = ComboBoxStyle.DropDownList,
-        AutoCompleteMode = AutoCompleteMode.SuggestAppend,
-        AutoCompleteSource = AutoCompleteSource.ListItems
+        DropDownStyle     = ComboBoxStyle.DropDownList,
+        AutoCompleteSource = AutoCompleteSource.ListItems,
+        AutoCompleteMode  = AutoCompleteMode.SuggestAppend
     };
     private readonly DateTimePicker dpStart = new() { Format = DateTimePickerFormat.Short };
     private readonly DateTimePicker dpEnd = new() { Format = DateTimePickerFormat.Short };
