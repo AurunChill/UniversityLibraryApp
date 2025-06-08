@@ -1,3 +1,5 @@
+using System;
+using System.IO;
 using LibraryApp.Data.Models;
 using LibraryApp.Data.Services;
 using LibraryApp.UI.Helpers;
@@ -235,6 +237,8 @@ internal sealed class BookEditDialog : Form
         AutoCompleteSource = AutoCompleteSource.ListItems,
         AutoCompleteMode  = AutoCompleteMode.SuggestAppend
     };
+    private readonly TextBox tCover = new() { ReadOnly = true, BackColor = SystemColors.Window };
+    private readonly Button btnBrowse = new() { Text = "Файл…", Height = 30 };
 
     public BookEditDialog(BookService books, PublisherService publishers, Book book)
     {
@@ -243,7 +247,7 @@ internal sealed class BookEditDialog : Form
         _book = book;
 
         Text = "Редактирование";
-        Size = new Size(500, 400);
+        Size = new Size(560, 470);
         StartPosition = FormStartPosition.CenterParent;
         BackColor = Color.FromArgb(40, 40, 46);
         ForeColor = Color.Gainsboro;
@@ -267,12 +271,16 @@ internal sealed class BookEditDialog : Form
         Controls.Add(new Label { Text = "Описание", AutoSize = true, Left = 20, Top = y += 35 });
         tDesc.At(150, y - 3, 320); Controls.Add(tDesc);
 
+        Controls.Add(new Label { Text = "Обложка", AutoSize = true, Left = 20, Top = y += tDesc.Height + 10 });
+        tCover.At(150, y - 3, 250); Controls.Add(tCover);
+        btnBrowse.At(410, y - 4, 80); Controls.Add(btnBrowse);
+
         var ok = new Button
         {
             Text = "Сохранить",
             DialogResult = DialogResult.OK,
             Left = Width / 2 - 70,
-            Top = 310,
+            Top = 380,
             Width = 140,
             Height = 45,
             BackColor = Color.FromArgb(98, 0, 238),
@@ -293,9 +301,23 @@ internal sealed class BookEditDialog : Form
             cbPublisher.SelectedItem = cbPublisher.Items
                 .Cast<Publisher?>()
                 .FirstOrDefault(p => p?.PublisherId == _book.PublisherId);
+            tCover.Text = _book.CoverUrl ?? string.Empty;
         };
 
+        btnBrowse.Click += ChooseCover;
+
         ok.Click += async (_, __) => await SaveAsync();
+    }
+
+    private void ChooseCover(object? sender, EventArgs e)
+    {
+        using var od = new OpenFileDialog
+        {
+            Title = "Выберите изображение обложки",
+            Filter = "Картинки|*.jpg;*.jpeg;*.png;*.bmp|Все файлы|*.*"
+        };
+        if (od.ShowDialog(this) == DialogResult.OK)
+            tCover.Text = od.FileName;
     }
 
     private async Task SaveAsync()
@@ -313,6 +335,14 @@ internal sealed class BookEditDialog : Form
         _book.Pages = (int)numPages.Value;
         _book.PublisherId = cbPublisher.SelectedItem is Publisher p ? p.PublisherId : null;
         _book.Description = tDesc.Text;
+        if (!string.IsNullOrWhiteSpace(tCover.Text) && File.Exists(tCover.Text))
+        {
+            string dir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "AppData", "Media", "Covers");
+            Directory.CreateDirectory(dir);
+            string fileName = Guid.NewGuid().ToString() + Path.GetExtension(tCover.Text);
+            File.Copy(tCover.Text, Path.Combine(dir, fileName), true);
+            _book.CoverUrl = fileName;
+        }
         await _books.UpdateAsync(_book);
     }
 }
