@@ -108,7 +108,6 @@ public sealed class DebtsPage : TablePageBase
 
             _grid.Height = btnAdd.Top - _grid.Top - 10;
             _grid.Width = ClientSize.Width - 40;
-
         }
     }
 
@@ -202,15 +201,15 @@ internal sealed class DebtDialog : Form
 {
     private readonly ComboBox cbBook = new()
     {
-        DropDownStyle = ComboBoxStyle.DropDownList,
-        AutoCompleteMode = AutoCompleteMode.SuggestAppend,
-        AutoCompleteSource = AutoCompleteSource.ListItems
+        DropDownStyle     = ComboBoxStyle.DropDownList,
+        AutoCompleteSource = AutoCompleteSource.ListItems,
+        AutoCompleteMode  = AutoCompleteMode.SuggestAppend
     };
     private readonly ComboBox cbTicket = new()
     {
-        DropDownStyle = ComboBoxStyle.DropDownList,
-        AutoCompleteMode = AutoCompleteMode.SuggestAppend,
-        AutoCompleteSource = AutoCompleteSource.ListItems
+        DropDownStyle     = ComboBoxStyle.DropDownList,
+        AutoCompleteSource = AutoCompleteSource.ListItems,
+        AutoCompleteMode  = AutoCompleteMode.SuggestAppend
     };
     private readonly DateTimePicker dpStart = new() { Format = DateTimePickerFormat.Short };
     private readonly DateTimePicker dpEnd = new() { Format = DateTimePickerFormat.Short };

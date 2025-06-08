@@ -119,12 +119,13 @@ namespace LibraryApp.UI.Forms
 
             // --- Секция транзакций ---
             var offsetLeft = _gridLoc.Right + 40;
+            int transShift = 350;
             var lblTrans = new Label
             {
                 Text     = "Транзакции",
                 Font     = new Font("Segoe UI", 14, FontStyle.Bold),
                 AutoSize = true,
-                Left     = offsetLeft,
+                Left     = offsetLeft + transShift,
                 Top      = 20
             };
             Controls.Add(lblTrans);
@@ -132,7 +133,7 @@ namespace LibraryApp.UI.Forms
             _searchTrans = new TextBox
             {
                 PlaceholderText = "  Поиск по месту…",
-                Left            = offsetLeft,
+                Left            = offsetLeft + transShift,
                 Top             = lblTrans.Bottom + 10,
                 Width           = 520,
                 Height          = 30
@@ -144,7 +145,7 @@ namespace LibraryApp.UI.Forms
             {
                 Text     = "Для сортировки нажмите на заголовок колонки",
                 AutoSize = true,
-                Left     = offsetLeft,
+                Left     = offsetLeft + transShift,
                 Top      = _searchTrans.Bottom + 5
             };
             Controls.Add(hintTr);
@@ -157,7 +158,7 @@ namespace LibraryApp.UI.Forms
                 => await LoadTransactionsAsync(_gridTrans.Columns[e.ColumnIndex].DataPropertyName);
             Controls.Add(_gridTrans);
 
-            var btnAddTr = MakeButton("Создать", _gridTrans.Left, _gridTrans.Bottom + 10, async (_, __) =>
+            var btnAddTr = MakeButton("Создать", _gridTrans.Left + transShift, _gridTrans.Bottom + 10, async (_, __) =>
             {
                 using var page = new TransactionAddPage(_transactions, _locations, _db, _publishers, _genres, _languages);
                 if (page.ShowDialog(this) == DialogResult.OK)
@@ -179,13 +180,17 @@ namespace LibraryApp.UI.Forms
                 btnAdd.Top = ClientSize.Height - btnAdd.Height - margin;
                 btnEdit.Top = btnAdd.Top;
                 btnDel.Top = btnAdd.Top;
-
-                btnAddTr.Top = ClientSize.Height - btnAddTr.Height - margin;
+                btnAddTr.Top  = ClientSize.Height - btnAddTr.Height - margin;
 
                 int tableWidth = (ClientSize.Width - 80) / 2;
-                _gridLoc.Width = tableWidth;
+                _gridLoc.Width   = tableWidth;
                 _gridTrans.Width = tableWidth;
-                _gridTrans.Left = _gridLoc.Right + 40;
+                _gridTrans.Left  = _gridLoc.Right + 40;
+
+                lblTrans.Left    = _gridTrans.Left + transShift;
+                _searchTrans.Left = _gridTrans.Left + transShift;
+                hintTr.Left      = _gridTrans.Left + transShift;
+                btnAddTr.Left    = _gridTrans.Left + transShift;
                 _gridLoc.Height = btnAdd.Top - _gridLoc.Top - 10;
                 _gridTrans.Height = btnAddTr.Top - _gridTrans.Top - 10;
             }
@@ -388,9 +393,18 @@ namespace LibraryApp.UI.Forms
         private readonly PublisherService            _publishers;
         private readonly GenreService               _genres;
         private readonly LanguageCodeService        _languages;
-
-        private readonly ComboBox      cbTo     = new() { DropDownStyle = ComboBoxStyle.DropDownList, AutoCompleteMode = AutoCompleteMode.SuggestAppend, AutoCompleteSource = AutoCompleteSource.ListItems };
-        private readonly ComboBox      cbFrom   = new() { DropDownStyle = ComboBoxStyle.DropDownList, AutoCompleteMode = AutoCompleteMode.SuggestAppend, AutoCompleteSource = AutoCompleteSource.ListItems };
+        private readonly ComboBox      cbTo     = new()
+        {
+            DropDownStyle     = ComboBoxStyle.DropDownList,
+            AutoCompleteSource = AutoCompleteSource.ListItems,
+            AutoCompleteMode  = AutoCompleteMode.SuggestAppend
+        };
+        private readonly ComboBox      cbFrom   = new()
+        {
+            DropDownStyle     = ComboBoxStyle.DropDownList,
+            AutoCompleteSource = AutoCompleteSource.ListItems,
+            AutoCompleteMode  = AutoCompleteMode.SuggestAppend
+        };
         private readonly DateTimePicker dt      = new() { Value = DateTime.Today };
         private readonly NumericUpDown  num     = new() { Minimum = 1, Maximum = 1000, Value = 1 };
         private readonly CheckBox       chk     = new() { Text = "Сформировать книгу?", AutoSize = true };
@@ -399,7 +413,12 @@ namespace LibraryApp.UI.Forms
         private readonly TextBox       tIsbn   = new();
         private readonly TextBox       tTitle  = new();
         private readonly NumericUpDown tYear   = new() { Minimum = 0, Maximum = DateTime.Now.Year, Value = DateTime.Now.Year };
-        private readonly ComboBox      cbPublisher = new() { DropDownStyle = ComboBoxStyle.DropDownList, AutoCompleteMode = AutoCompleteMode.SuggestAppend, AutoCompleteSource = AutoCompleteSource.ListItems };
+        private readonly ComboBox      cbPublisher = new()
+        {
+            DropDownStyle     = ComboBoxStyle.DropDownList,
+            AutoCompleteSource = AutoCompleteSource.ListItems,
+            AutoCompleteMode  = AutoCompleteMode.SuggestAppend
+        };
         private readonly CheckedListBox clLanguages = new() { CheckOnClick = true, Height = 80 };
         private readonly TextBox       tDescription = new() { Multiline = true, Height = 60, ScrollBars = ScrollBars.Vertical };
         private readonly NumericUpDown tPages   = new() { Minimum = 1, Maximum = 10000 };
@@ -594,7 +613,6 @@ namespace LibraryApp.UI.Forms
                 foreach (var item in clGenres.CheckedItems)
                     if (item is Genre g)
                         book.Genres.Add(new GenreBook { GenreId = g.GenreId });
-
                 await using var db = await _db.CreateDbContextAsync();
                 db.Books.Add(book);
                 await db.SaveChangesAsync();

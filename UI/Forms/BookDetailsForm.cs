@@ -229,7 +229,12 @@ internal sealed class BookEditDialog : Form
     private readonly NumericUpDown numYear = new() { Minimum = 0, Maximum = DateTime.Now.Year };
     private readonly NumericUpDown numPages = new() { Minimum = 0, Maximum = 10000 };
     private readonly TextBox tDesc = new() { Multiline = true, Height = 80 };
-    private readonly ComboBox cbPublisher = new() { DropDownStyle = ComboBoxStyle.DropDownList, AutoCompleteMode = AutoCompleteMode.SuggestAppend, AutoCompleteSource = AutoCompleteSource.ListItems };
+    private readonly ComboBox cbPublisher = new()
+    {
+        DropDownStyle     = ComboBoxStyle.DropDownList,
+        AutoCompleteSource = AutoCompleteSource.ListItems,
+        AutoCompleteMode  = AutoCompleteMode.SuggestAppend
+    };
 
     public BookEditDialog(BookService books, PublisherService publishers, Book book)
     {
