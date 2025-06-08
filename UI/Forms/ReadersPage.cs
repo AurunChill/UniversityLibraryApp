@@ -26,6 +26,7 @@ public sealed class ReadersPage : TablePageBase
         Text = "Читатели";
         MinimumSize = new Size(900, 650);
         StartPosition = FormStartPosition.CenterParent;
+        WindowState = FormWindowState.Maximized;
 
         var header = new Label
         {

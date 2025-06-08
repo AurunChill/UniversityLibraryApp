@@ -43,6 +43,7 @@ namespace LibraryApp.UI.Forms
             Text          = "Инвентарь";
             MinimumSize   = new Size(1100, 700);
             StartPosition = FormStartPosition.CenterParent;
+            WindowState   = FormWindowState.Maximized;
 
             // --- Секция локаций ---
             var lblLoc = new Label

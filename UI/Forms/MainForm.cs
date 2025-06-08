@@ -486,32 +486,39 @@ namespace LibraryApp.UI.Forms
             var textPanel = new Panel
             {
                 Dock = DockStyle.Fill,
-                Padding = new Padding(10, 8, 6, 0)
+                Padding = new Padding(10, 8, 6, 0),
+                Tag = book
             };
-            textPanel.Controls.Add(new Label
+            var lblYear = new Label
             {
                 Text = book.PublishYear.ToString(),
                 Dock = DockStyle.Top,
                 Height = 18,
                 Font = new Font("Segoe UI", 9),
-                ForeColor = Color.Silver
-            });
-            textPanel.Controls.Add(new Label
+                ForeColor = Color.Silver,
+                Tag = book
+            };
+            textPanel.Controls.Add(lblYear);
+            var lblAuthor = new Label
             {
                 Text = author,
                 Dock = DockStyle.Top,
                 Height = 22,
                 Font = new Font("Segoe UI", 10),
-                ForeColor = Color.Gainsboro
-            });
-            textPanel.Controls.Add(new Label
+                ForeColor = Color.Gainsboro,
+                Tag = book
+            };
+            textPanel.Controls.Add(lblAuthor);
+            var lblTitle = new Label
             {
                 Text = title,
                 Dock = DockStyle.Top,
                 Height = 32,
                 Font = new Font("Segoe UI", 13, FontStyle.Bold),
-                ForeColor = Color.White
-            });
+                ForeColor = Color.White,
+                Tag = book
+            };
+            textPanel.Controls.Add(lblTitle);
 
             // Клик по любой части карточки открывает детали книги
             card.Click += OnCardClick;
