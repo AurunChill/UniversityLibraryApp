@@ -431,3 +431,4 @@ internal sealed class BookEditDialog : Form
         await db.SaveChangesAsync();
     }
 }
+

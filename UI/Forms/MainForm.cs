@@ -94,7 +94,7 @@ namespace LibraryApp.UI.Forms
             Shown += async (_, __) => await LoadCardsAsync();
         }
 
-        /// <summary>
+        /// <summary>f
         /// Создаёт FlowLayoutPanel с «табами» навигации (Главная, Поставки, Должники, Читательские билеты).
         /// </summary>
         private FlowLayoutPanel CreateNavigationRow(int marginTopStart = 0)
