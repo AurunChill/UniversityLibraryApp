@@ -88,7 +88,7 @@ namespace LibraryApp.UI.Forms
             Shown += async (_, __) => await LoadCardsAsync();
         }
 
-        /// <summary>
+        /// <summary>f
         /// Создаёт FlowLayoutPanel с «табами» навигации (Главная, Поставки, Должники, Читательские билеты).
         /// </summary>
         private FlowLayoutPanel CreateNavigationRow(int marginTopStart = 0)
@@ -461,7 +461,7 @@ namespace LibraryApp.UI.Forms
         {
             var card = new Panel
             {
-                Size = new Size(260, 420),
+                Size = new Size(260, 520),
                 Margin = new Padding(15),
                 BackColor = Color.FromArgb(40, 40, 46),
                 Cursor = Cursors.Hand,

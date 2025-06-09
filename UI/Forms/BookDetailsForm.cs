@@ -342,3 +342,4 @@ internal sealed class BookEditDialog : Form
         await _books.UpdateAsync(_book);
     }
 }
+

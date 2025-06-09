@@ -64,3 +64,6 @@ Generated\ Files/
 # ─── User-specific Syncfusion / DevExpress settings (если появятся) ─────────
 SyncfusionLicense.txt
 DevExpressLicense.xml
+
+all_code.cs
+collecter.py
