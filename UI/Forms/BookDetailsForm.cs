@@ -337,11 +337,7 @@ internal sealed class BookEditDialog : Form
         _book.Description = tDesc.Text;
         if (!string.IsNullOrWhiteSpace(tCover.Text) && File.Exists(tCover.Text))
         {
-            string dir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "AppData", "Media", "Covers");
-            Directory.CreateDirectory(dir);
-            string fileName = Guid.NewGuid().ToString() + Path.GetExtension(tCover.Text);
-            File.Copy(tCover.Text, Path.Combine(dir, fileName), true);
-            _book.CoverUrl = fileName;
+            _book.CoverUrl = ImageHelper.SaveCover(tCover.Text);
         }
         await _books.UpdateAsync(_book);
     }
