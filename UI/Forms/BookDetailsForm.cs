@@ -1,10 +1,9 @@
-using System;
-using System.IO;
-using System.Linq;
 using Microsoft.EntityFrameworkCore;
 using LibraryApp.Data.Models;
 using LibraryApp.Data.Services;
 using LibraryApp.UI.Helpers;
+using LibraryApp.Data;
+
 
 namespace LibraryApp.UI.Forms;
 
@@ -273,7 +272,7 @@ internal sealed class BookEditDialog : Form
         _book = book;
 
         Text = "Редактирование";
-        Size = new Size(560, 640);
+        Size = new Size(660, 800);
         StartPosition = FormStartPosition.CenterParent;
         BackColor = Color.FromArgb(40, 40, 46);
         ForeColor = Color.Gainsboro;
@@ -315,7 +314,7 @@ internal sealed class BookEditDialog : Form
             Text = "Сохранить",
             DialogResult = DialogResult.OK,
             Left = Width / 2 - 70,
-            Top = 550,
+            Top = 600,
             Width = 140,
             Height = 45,
             BackColor = Color.FromArgb(98, 0, 238),
