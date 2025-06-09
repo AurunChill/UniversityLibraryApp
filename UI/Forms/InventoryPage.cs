@@ -538,8 +538,12 @@ namespace LibraryApp.UI.Forms
             });
             Controls.Add(bookPanel);
 
-            // Открываем панель деталей при чек-боксе
-            chk.CheckedChanged += (_, __) => bookPanel.Visible = chk.Checked;
+            // Открываем панель деталей и блокируем выбор книги
+            chk.CheckedChanged += (_, __) =>
+            {
+                bookPanel.Visible = chk.Checked;
+                cbBook.Enabled = !chk.Checked;
+            };
 
             btnBrowse.Click += ChooseCover;
 
@@ -623,7 +627,9 @@ namespace LibraryApp.UI.Forms
                     PublishYear = (int)tYear.Value,
                     Description = tDescription.Text,
                     Pages       = (int)tPages.Value,
-                    CoverUrl    = "no_cover.png",
+                    CoverUrl    = !string.IsNullOrWhiteSpace(tCover.Text) && File.Exists(tCover.Text)
+                        ? ImageHelper.SaveCover(tCover.Text)
+                        : "no_cover.png",
                     PublisherId = cbPublisher.SelectedItem is Publisher p ? p.PublisherId : null,
                 };
 

@@ -1,5 +1,7 @@
 using System;
 using System.IO;
+using System.Linq;
+using Microsoft.EntityFrameworkCore;
 using LibraryApp.Data.Models;
 using LibraryApp.Data.Services;
 using LibraryApp.UI.Helpers;
@@ -12,14 +14,24 @@ public sealed class BookDetailForm : Form
     private readonly BookService _books;
     private readonly InventoryTransactionService _transactions;
     private readonly PublisherService _publishers;
+    private readonly GenreService _genres;
+    private readonly LanguageCodeService _languages;
+    private readonly AuthorService _authors;
+    private readonly IDbContextFactory<LibraryContext> _db;
     private PictureBox _cover = null!;
 
-    public BookDetailForm(Book book, BookService books, InventoryTransactionService transactions, PublisherService publishers)
+    public BookDetailForm(Book book, BookService books, InventoryTransactionService transactions,
+        PublisherService publishers, GenreService genres, LanguageCodeService languages,
+        AuthorService authors, IDbContextFactory<LibraryContext> db)
     {
         _book = book;
         _books = books;
         _transactions = transactions;
         _publishers = publishers;
+        _genres = genres;
+        _languages = languages;
+        _authors = authors;
+        _db = db;
         BuildUI();
     }
 
@@ -114,10 +126,11 @@ public sealed class BookDetailForm : Form
         };
         btnEdit.Click += async (_,__) =>
         {
-            using var dlg = new BookEditDialog(_books, _publishers, _book);
+            using var dlg = new BookEditDialog(_books, _publishers, _authors,
+                _genres, _languages, _db, _book);
             if (dlg.ShowDialog(this) == DialogResult.OK)
             {
-                var fresh = await _books.GetByIdAsync(_book.BookId);
+                var fresh = await _books.GetDetailedByIdAsync(_book.BookId);
                 if (fresh is not null) _book = fresh;
                 Controls.Clear();
                 BuildUI();
@@ -225,6 +238,10 @@ internal sealed class BookEditDialog : Form
 {
     private readonly BookService _books;
     private readonly PublisherService _publishers;
+    private readonly AuthorService _authors;
+    private readonly GenreService _genres;
+    private readonly LanguageCodeService _languages;
+    private readonly IDbContextFactory<LibraryContext> _db;
     private readonly Book _book;
     private readonly TextBox tTitle = new();
     private readonly TextBox tIsbn = new();
@@ -239,15 +256,24 @@ internal sealed class BookEditDialog : Form
     };
     private readonly TextBox tCover = new() { ReadOnly = true, BackColor = SystemColors.Window };
     private readonly Button btnBrowse = new() { Text = "Файл…", Height = 30 };
+    private readonly CheckedListBox clAuthors = new() { CheckOnClick = true, Height = 80 };
+    private readonly CheckedListBox clGenres = new() { CheckOnClick = true, Height = 80 };
+    private readonly CheckedListBox clLanguages = new() { CheckOnClick = true, Height = 80 };
 
-    public BookEditDialog(BookService books, PublisherService publishers, Book book)
+    public BookEditDialog(BookService books, PublisherService publishers, AuthorService authors,
+        GenreService genres, LanguageCodeService languages, IDbContextFactory<LibraryContext> db,
+        Book book)
     {
         _books = books;
         _publishers = publishers;
+        _authors = authors;
+        _genres = genres;
+        _languages = languages;
+        _db = db;
         _book = book;
 
         Text = "Редактирование";
-        Size = new Size(560, 470);
+        Size = new Size(560, 640);
         StartPosition = FormStartPosition.CenterParent;
         BackColor = Color.FromArgb(40, 40, 46);
         ForeColor = Color.Gainsboro;
@@ -275,12 +301,21 @@ internal sealed class BookEditDialog : Form
         tCover.At(150, y - 3, 250); Controls.Add(tCover);
         btnBrowse.At(410, y - 4, 80); Controls.Add(btnBrowse);
 
+        Controls.Add(new Label { Text = "Авторы", AutoSize = true, Left = 20, Top = y += 35 });
+        clAuthors.At(150, y - 3, 320); Controls.Add(clAuthors);
+
+        Controls.Add(new Label { Text = "Жанры", AutoSize = true, Left = 20, Top = y += clAuthors.Height + 10 });
+        clGenres.At(150, y - 3, 320); Controls.Add(clGenres);
+
+        Controls.Add(new Label { Text = "Языки", AutoSize = true, Left = 20, Top = y += clGenres.Height + 10 });
+        clLanguages.At(150, y - 3, 200); Controls.Add(clLanguages);
+
         var ok = new Button
         {
             Text = "Сохранить",
             DialogResult = DialogResult.OK,
             Left = Width / 2 - 70,
-            Top = 380,
+            Top = 550,
             Width = 140,
             Height = 45,
             BackColor = Color.FromArgb(98, 0, 238),
@@ -302,6 +337,33 @@ internal sealed class BookEditDialog : Form
                 .Cast<Publisher?>()
                 .FirstOrDefault(p => p?.PublisherId == _book.PublisherId);
             tCover.Text = _book.CoverUrl ?? string.Empty;
+
+            clAuthors.Items.Clear();
+            foreach (var a in await _authors.GetAllAsync())
+            {
+                int idx = clAuthors.Items.Add(a);
+                if (_book.Authors.Any(ab => ab.AuthorId == a.AuthorId))
+                    clAuthors.SetItemChecked(idx, true);
+            }
+            clAuthors.DisplayMember = nameof(Author.Name);
+
+            clGenres.Items.Clear();
+            foreach (var g in await _genres.GetAllAsync())
+            {
+                int idx = clGenres.Items.Add(g);
+                if (_book.Genres.Any(bg => bg.GenreId == g.GenreId))
+                    clGenres.SetItemChecked(idx, true);
+            }
+            clGenres.DisplayMember = nameof(Genre.Name);
+
+            clLanguages.Items.Clear();
+            foreach (var l in await _languages.GetAllAsync())
+            {
+                int idx = clLanguages.Items.Add(l);
+                if (_book.Languages.Any(bl => bl.LangId == l.LangId))
+                    clLanguages.SetItemChecked(idx, true);
+            }
+            clLanguages.DisplayMember = nameof(LanguageCode.Code);
         };
 
         btnBrowse.Click += ChooseCover;
@@ -337,12 +399,35 @@ internal sealed class BookEditDialog : Form
         _book.Description = tDesc.Text;
         if (!string.IsNullOrWhiteSpace(tCover.Text) && File.Exists(tCover.Text))
         {
-            string dir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "AppData", "Media", "Covers");
-            Directory.CreateDirectory(dir);
-            string fileName = Guid.NewGuid().ToString() + Path.GetExtension(tCover.Text);
-            File.Copy(tCover.Text, Path.Combine(dir, fileName), true);
-            _book.CoverUrl = fileName;
+            _book.CoverUrl = ImageHelper.SaveCover(tCover.Text);
         }
-        await _books.UpdateAsync(_book);
+        await using var db = await _db.CreateDbContextAsync();
+        var entity = await db.Books
+            .Include(b => b.Authors)
+            .Include(b => b.Genres)
+            .Include(b => b.Languages)
+            .FirstAsync(b => b.BookId == _book.BookId);
+
+        db.Entry(entity).CurrentValues.SetValues(_book);
+
+        entity.Authors.Clear();
+        foreach (var item in clAuthors.CheckedItems.OfType<Author>())
+            entity.Authors.Add(new AuthorBook { AuthorId = item.AuthorId });
+
+        entity.Genres.Clear();
+        foreach (var item in clGenres.CheckedItems.OfType<Genre>())
+            entity.Genres.Add(new GenreBook { GenreId = item.GenreId });
+
+        entity.Languages.Clear();
+        long firstLang = 0;
+        foreach (var item in clLanguages.CheckedItems.OfType<LanguageCode>())
+        {
+            entity.Languages.Add(new BookLanguage { LangId = item.LangId });
+            if (firstLang == 0) firstLang = item.LangId;
+        }
+        if (firstLang != 0)
+            entity.LangId = firstLang;
+
+        await db.SaveChangesAsync();
     }
 }

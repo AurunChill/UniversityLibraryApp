@@ -15,6 +15,8 @@ namespace LibraryApp.UI.Forms
         private readonly GenreService _genres;
         private readonly LanguageCodeService _languages;
         private readonly PublisherService _publishers;
+        private readonly AuthorService _authors;
+        private readonly IDbContextFactory<LibraryContext> _db;
         private FlowLayoutPanel? _cardPanel;
         private Label? _countLabel;
         private TextBox? _search;
@@ -32,7 +34,9 @@ namespace LibraryApp.UI.Forms
             InventoryTransactionService transactions,
             GenreService genres,
             LanguageCodeService languages,
-            PublisherService publishers)
+            PublisherService publishers,
+            AuthorService authors,
+            IDbContextFactory<LibraryContext> db)
         {
             _provider = provider;
             _books = books;
@@ -40,6 +44,8 @@ namespace LibraryApp.UI.Forms
             _genres = genres;
             _languages = languages;
             _publishers = publishers;
+            _authors = authors;
+            _db = db;
             _screenBounds = Screen.PrimaryScreen!.Bounds;
             InitializeComponent();
         }
@@ -461,7 +467,7 @@ namespace LibraryApp.UI.Forms
         {
             var card = new Panel
             {
-                Size = new Size(260, 420),
+                Size = new Size(260, 520),
                 Margin = new Padding(15),
                 BackColor = Color.FromArgb(40, 40, 46),
                 Cursor = Cursors.Hand,
@@ -483,9 +489,9 @@ namespace LibraryApp.UI.Forms
             var pic = new PictureBox
             {
                 Dock = DockStyle.Top,
-                Height = 320,
+                Height = 420,
                 Width = 260,
-                SizeMode = PictureBoxSizeMode.AutoSize,
+                SizeMode = PictureBoxSizeMode.Zoom,
                 BackColor = Color.FromArgb(40, 40, 46),
                 Image = File.Exists(imgPath) ? Image.FromFile(imgPath) : null,
                 Tag = book
@@ -552,7 +558,8 @@ namespace LibraryApp.UI.Forms
         {
             if (sender is Control c && c.Tag is Book b)
             {
-                using var f = new BookDetailForm(b, _books, _transactions, _publishers);
+                using var f = new BookDetailForm(b, _books, _transactions, _publishers,
+                    _genres, _languages, _authors, _db);
                 f.ShowDialog(this);
             }
         }

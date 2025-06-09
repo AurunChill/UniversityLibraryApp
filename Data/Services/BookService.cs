@@ -36,4 +36,17 @@ public class BookService : BaseService<Book>
             )
             .ToList();
     }
+
+    public async Task<Book?> GetDetailedByIdAsync(long id)
+    {
+        await using var db = await Factory.CreateDbContextAsync();
+        return await db.Books
+            .Include(b => b.Publisher)
+            .Include(b => b.Language)
+            .Include(b => b.Authors).ThenInclude(ab => ab.Author)
+            .Include(b => b.Genres).ThenInclude(gb => gb.Genre)
+            .Include(b => b.Languages).ThenInclude(bl => bl.Language)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(b => b.BookId == id);
+    }
 }
